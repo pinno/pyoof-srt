@@ -6,11 +6,13 @@ import numpy as np
 from ..math_functions import line_equation
 
 __all__ = [
-    'opd_effelsberg', 'opd_manual', 'block_manual', 'block_effelsberg'
+    'opd_effelsberg', 'opd_srt', 'opd_manual',
+    'block_manual', 'block_effelsberg', 
+    'block_srt', 'block_srt_wo_legs', 'block_srt_wo_legs_and_sr'
     ]
 
 
-def opd_effelsberg(x, y, d_z):
+def opd_effelsberg(x, y, d_z, delta_opd=0.0):
     """
     Optical path difference (OPD) function, :math:`\\delta(x,y;d_z)`. Given by
     the geometry of the telescope and radial offset parameter, :math:`d_z`.
@@ -27,6 +29,7 @@ def opd_effelsberg(x, y, d_z):
         characteristic measurement adds the classical interference pattern to
         the beam maps, normalized squared (field) radiation pattern, which is
         an out-of-focus property. It is usually of the order of centimeters.
+    delta_opd : ``
 
     Returns
     -------
@@ -58,7 +61,64 @@ def opd_effelsberg(x, y, d_z):
     a = r / (2 * Fp)
     b = r / (2 * F)
 
-    opd = d_z * ((1 - a ** 2) / (1 + a ** 2) + (1 - b ** 2) / (1 + b ** 2))
+    opd = d_z * ((1 - a ** 2) / (1 + a ** 2) + (1 - b ** 2) / (1 + b ** 2)) + \
+          delta_opd
+
+    return opd
+    
+    
+def opd_srt(x, y, d_z, delta_opd):
+    """
+    Optical path difference (OPD) function, :math:`\\delta(x,y;d_z)`. Given by
+    the geometry of the telescope and radial offset parameter, :math:`d_z`.
+    This function is specific for the Sardinia Radio Telescope.
+
+    Parameters
+    ----------
+    x : `~numpy.ndarray`
+        Grid value for the :math:`x` variable in meters.
+    y : `~numpy.ndarray`
+        Grid value for the :math:`y` variable in meters.
+    d_z : `float`
+        Radial offset, :math:`d_z`, added to the sub-reflector in meters. This
+        characteristic measurement adds the classical interference pattern to
+        the beam maps, normalized squared (field) radiation pattern, which is
+        an out-of-focus property. It is usually of the order of centimeters.
+    delta_opd : ``
+
+    Returns
+    -------
+    opd : `~numpy.ndarray`
+        Optical path difference function, :math:`\\delta(x,y;d_z)`.
+
+    Notes
+    -----
+    For a Gregorian configuration, and with the dish diameter of Effelsberg,
+    the OPD function becomes,
+
+    .. math::
+        \\delta(x,;d_z) = d_z\\left( \\frac{1-a^2}{1+a^2} +
+        \\frac{1-b^2}{1+b^2} \\right),
+
+    .. math::
+        a = \\frac{\\sqrt{x^2+y^2}}{2F_\\mathrm{p}}, \\qquad b =
+        \\frac{\\sqrt{x^2+y^2}}{2F_\\mathrm{eff}},
+
+    where :math:`F_\\mathrm{p}=40` m corresponds to the parabola focal length
+    and :math:`F_\\mathrm{eff}=400.4` m, the effective or total focal length.
+
+    """
+
+    # Cassegrain/Gregorian (at focus) telescope
+    Fp = 21.0236  # Focus primary reflector m
+    F = 149.76  # Total focus Gregorian telescope m
+    # F/D = 2.34
+    r = np.sqrt(x ** 2 + y ** 2)  # polar coordinates radius
+    a = r / (2 * Fp)
+    b = r / (2 * F)
+    
+
+    opd = d_z * ((1 - a ** 2) / (1 + a ** 2) + (1 - b ** 2) / (1 + b ** 2)) + delta_opd
 
     return opd
 
@@ -170,6 +230,111 @@ def block_effelsberg(x, y):
 
     block[(A < y) & (C > y) & (x7 < x) & (x8 > x)] = 0
     block[(pr > y) & (C < y) & (circ(x) > y) & (-circ(x) < y)] = 0
+
+    return block
+
+
+def block_srt(x, y):
+    """
+    Truncation in the aperture (amplitude) distribution, :math:`B(x, y)`,
+    given by the telescope's structure; i.e. support legs, sub-reflector and
+    shade effect as seen from the secondary focus of the Sardinia Radio Telescope.
+
+    Parameters
+    ----------
+    x : `~numpy.ndarray`
+        Grid value for the :math:`x` variable in meters.
+    y : `~numpy.ndarray`
+        Grid value for the :math:`y` variable in meters.
+
+    Returns
+    -------
+    block : `~numpy.ndarray`
+        Aperture (amplitude) distribution truncation, :math:`B(x, y)`. Values
+        that are zero correspond to blocked values.
+    """
+
+    # Default Sardinia Radio Telescope geometry
+    pr = 32.004  # Primary reflector radius
+    sr = 3.953  # Sub-reflector radius
+
+    L = 17.5 - sr   # Length support structure (from the edge of the sr)
+    a = 0.25  # Half-width support structure
+
+
+    block = np.zeros(x.shape)  # or y.shape same
+    block[(x ** 2 + y ** 2 < pr ** 2) & \
+          (x ** 2 + y ** 2 > sr ** 2)] = 1
+
+    block[(y < x + a * np.sqrt(2)) & \
+          (y > x - a * np.sqrt(2)) & \
+          (y < (sr + L) * np.sqrt(2) - x) & \
+          (y > -(sr + L) * np.sqrt(2) - x)] = 0
+
+    block[(y < -x + a * np.sqrt(2)) & \
+          (y > -x - a * np.sqrt(2)) & \
+          (y < (sr + L) * np.sqrt(2) + x) & \
+          (y > -(sr + L) * np.sqrt(2) + x)] = 0
+
+    return block
+
+
+def block_srt_wo_legs(x, y):
+    """
+    Truncation in the aperture (amplitude) distribution, :math:`B(x, y)`,
+    given by the telescope's structure; i.e. support legs, sub-reflector and
+    shade effect as seen from the secondary focus of the Sardinia Radio Telescope.
+
+    Parameters
+    ----------
+    x : `~numpy.ndarray`
+        Grid value for the :math:`x` variable in meters.
+    y : `~numpy.ndarray`
+        Grid value for the :math:`y` variable in meters.
+
+    Returns
+    -------
+    block : `~numpy.ndarray`
+        Aperture (amplitude) distribution truncation, :math:`B(x, y)`. Values
+        that are zero correspond to blocked values.
+    """
+
+    # Default Sardinia Radio Telescope geometry
+    pr = 32.004  # Primary reflector radius
+    sr = 3.953  # Sub-reflector radius
+
+    block = np.zeros(x.shape)  # or y.shape same
+    block[(x ** 2 + y ** 2 < pr ** 2) & \
+          (x ** 2 + y ** 2 > sr ** 2)] = 1
+
+    return block
+
+
+def block_srt_wo_legs_and_sr(x, y):
+    """
+    Truncation in the aperture (amplitude) distribution, :math:`B(x, y)`,
+    given by the telescope's structure; i.e. support legs, sub-reflector and
+    shade effect as seen from the secondary focus of the Sardinia Radio Telescope.
+
+    Parameters
+    ----------
+    x : `~numpy.ndarray`
+        Grid value for the :math:`x` variable in meters.
+    y : `~numpy.ndarray`
+        Grid value for the :math:`y` variable in meters.
+
+    Returns
+    -------
+    block : `~numpy.ndarray`
+        Aperture (amplitude) distribution truncation, :math:`B(x, y)`. Values
+        that are zero correspond to blocked values.
+    """
+
+    # Default Sardinia Radio Telescope geometry
+    pr = 32.004  # Primary reflector radius
+
+    block = np.zeros(x.shape)  # or y.shape same
+    block[(x ** 2 + y ** 2 < pr ** 2)] = 1
 
     return block
 

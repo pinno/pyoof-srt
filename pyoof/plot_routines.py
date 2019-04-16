@@ -11,12 +11,13 @@ from astropy.utils.data import get_pkg_data_filename
 import warnings
 import os
 import yaml
-from .aperture import radiation_pattern, phase
+from .aperture import radiation_pattern, phase, compute_deformation
 from .math_functions import wavevector2degrees, wavevector2radians
 from .aux_functions import uv_ratio
 
 __all__ = [
-    'plot_beam', 'plot_data', 'plot_phase', 'plot_variance', 'plot_fit_path'
+    'plot_beam', 'plot_data', 'plot_phase', 'plot_error_map',
+    'plot_variance', 'plot_fit_path'
     ]
 
 # Plot style added from relative path
@@ -172,7 +173,7 @@ def plot_beam(
         ax[i].set_xlabel('$u$ ' + angle)
         ax[i].set_ylim(*plim_v)
         ax[i].set_xlim(*plim_u)
-        ax[i].grid('off')
+        ax[i].grid(False)
 
     fig.suptitle(title)
     fig.tight_layout()
@@ -274,7 +275,7 @@ def plot_data(u_data, v_data, beam_data, d_z, angle, title, res_mode):
         ax[i].set_ylabel('$v$ ' + uv_title)
         ax[i].set_xlabel('$u$ ' + uv_title)
         ax[i].set_title(subtitle[i])
-        ax[i].grid('off')
+        ax[i].grid(False)
 
     fig.suptitle(title)
     fig.tight_layout()
@@ -340,7 +341,83 @@ def plot_phase(K_coeff, notilt, pr, title):
     ax.set_title(title)
     ax.set_ylabel('$y$ m')
     ax.set_xlabel('$x$ m')
-    ax.grid('off')
+    ax.grid(False)
+
+    fig.tight_layout()
+
+    return fig
+
+
+def plot_error_map(wavelength, K_coeff, notilt, pr, title, telescope_name):
+    """
+    Active surface deformations (error map), :math:`\\epsilon(x, y)`, figure,
+    given the Zernike circle polynomial coefficients, ``K_coeff``, solution
+    from the least squares minimization.
+
+    Parameters
+    ----------
+    K_coeff : `~numpy.ndarray`
+        Constants coefficients, :math:`K_{n\\ell}`, for each of them there is
+        only one Zernike circle polynomial, :math:`U^\ell_n(\\varrho,
+        \\varphi)`. The coefficients are between :math:`[-2, 2]`.
+    notilt : `bool`
+        Boolean to include or exclude the tilt coefficients in the aperture
+        phase distribution. The Zernike circle polynomials are related to tilt
+        through :math:`U^{-1}_1(\\varrho, \\varphi)` and
+        :math:`U^1_1(\\varrho, \\varphi)`.
+    pr : `float`
+        Primary reflector radius in meters.
+    title : `str`
+        Figure title.
+
+    Returns
+    -------
+    fig : `~matplotlib.figure.Figure`
+        Aperture phase distribution parametrized in terms of the Zernike
+        circle polynomials, and represented for the telescope's primary dish.
+    """
+    
+    if telescope_name == 'SRT':
+        F = 149.76
+    elif telescope_name == 'effelsberg':
+        F = 387.39435
+
+    if notilt:
+        cbartitle = (
+            '$\\varepsilon_{\\scriptsize{\\textrm{no-tilt}}}(x,y)$'
+            )
+    else:
+        cbartitle = '$\\varepsilon(x, y)$'
+
+    extent = [-pr, pr, -pr, pr]
+    levels = np.linspace(-2, 2, 9)
+
+    _x, _y, _phase = phase(K_coeff=K_coeff, notilt=notilt, pr=pr)
+    x_grid, y_grid = np.meshgrid(_x, _y)
+    # Transform phase error to deformation error
+    error = compute_deformation(phase=_phase, wavelength=wavelength,
+            x=x_grid, y=y_grid, F=F)
+    print(_phase)
+    print(error)
+
+    fig, ax = plt.subplots(figsize=(6, 5.8))
+
+    im = ax.imshow(X=error, extent=extent)
+
+    # Partial solution for contour Warning
+    #with warnings.catch_warnings():
+    #    warnings.simplefilter("ignore")
+    #    ax.contour(_x, _y, _phase, levels=levels, colors='k', alpha=0.3)
+
+    divider = make_axes_locatable(ax)
+    cax = divider.append_axes("right", size="3%", pad=0.03)
+    cb = fig.colorbar(im, cax=cax)
+    cb.ax.set_ylabel(cbartitle)
+
+    ax.set_title(title)
+    ax.set_ylabel('$y$ m')
+    ax.set_xlabel('$x$ m')
+    ax.grid(False)
 
     fig.tight_layout()
 
@@ -447,7 +524,7 @@ def plot_variance(matrix, order, diag, illumination, cbtitle, title):
     ax.set_xticklabels(labels_x, rotation='vertical')
     ax.set_yticks(np.arange(y_ticks) + 0.5)
     ax.set_yticklabels(labels_y)
-    ax.grid('off')
+    ax.grid(False)
 
     fig.tight_layout()
 
@@ -456,7 +533,7 @@ def plot_variance(matrix, order, diag, illumination, cbtitle, title):
 
 def plot_fit_path(
     path_pyoof, order, illum_func, telgeo, resolution, box_factor, angle,
-    plim_rad, save
+    plim_rad, save, wavelength, telescope_name
         ):
     """
     Plot all important figures after a least squares minimization.
@@ -540,7 +617,8 @@ def plot_fit_path(
     with open(os.path.join(path_pyoof, 'pyoof_info.yml'), 'r') as inputfile:
         pyoof_info = yaml.load(inputfile)
 
-    obs_object = pyoof_info['obs_object']
+    # Substitute "_" with "//_" in variable obs_object
+    obs_object = pyoof_info['obs_object'].replace('_', '\\_')
     meanel = round(pyoof_info['meanel'], 2)
     illumination = pyoof_info['illumination']
 
@@ -619,6 +697,17 @@ def plot_fit_path(
         diag=True,
         illumination=illumination
         )
+        
+    fig_error = plot_error_map(wavelength=pyoof_info['wavel'],
+        K_coeff=K_coeff,
+        title=(
+            '{} deformation error $d_z=\\pm {}$ m ' +
+            '$n={}$ $\\alpha={}$ deg'
+            ).format(obs_object, round(pyoof_info['d_z'][2], 3), n, meanel),
+        notilt=True,
+        pr=telgeo[2],
+        telescope_name=telescope_name
+        )
 
     if save:
         fig_beam.savefig(os.path.join(path_plot, 'fitbeam_n{}.pdf'.format(n)))
@@ -628,6 +717,7 @@ def plot_fit_path(
         fig_res.savefig(os.path.join(path_plot, 'residual_n{}.pdf'.format(n)))
         fig_cov.savefig(os.path.join(path_plot, 'cov_n{}.pdf'.format(n)))
         fig_corr.savefig(os.path.join(path_plot, 'corr_n{}.pdf'.format(n)))
+        fig_error.savefig(os.path.join(path_plot, 'error_map_n{}.pdf'.format(n)))
 
         if n == 1:
             fig_data.savefig(os.path.join(path_plot, 'obsbeam.pdf'))

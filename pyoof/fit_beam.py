@@ -10,10 +10,10 @@ from scipy import interpolate, optimize
 import os
 import time
 import yaml
-from .aperture import radiation_pattern, phase
+from .aperture import radiation_pattern, phase, compute_deformation
 from .math_functions import wavevector2radians, co_matrices
 from .plot_routines import plot_fit_path
-from .aux_functions import store_data_csv, illum_strings, store_data_ascii
+from .aux_functions import store_data_csv, illum_strings, store_data_ascii, precompute_srt_delta_opd
 
 __all__ = [
     'residual_true', 'residual', 'params_complete', 'fit_beam',
@@ -22,7 +22,7 @@ __all__ = [
 
 def residual_true(
     params, beam_data_norm, u_data, v_data, d_z, wavel, illum_func, telgeo,
-    resolution, box_factor, interp
+    resolution, box_factor, interp, delta_opd
         ):
     """
     Computes the true residual ready to use for the `~pyoof.fit_beam`
@@ -80,6 +80,7 @@ def residual_true(
         the computed grid (:math:`P_\\mathrm{norm}(u, v)`) for the FFT2
         aperture distribution model (:math:`\\underline{E_\\mathrm{a}}(x,
         y)`).
+    delta_opd : ``
 
     Returns
     -------
@@ -105,19 +106,29 @@ def residual_true(
             illum_func=illum_func,
             telgeo=telgeo,
             resolution=resolution,
-            box_factor=box_factor
+            box_factor=box_factor,
+            delta_opd=delta_opd[i]
             )
 
         power_pattern = np.abs(F) ** 2
 
         # Normalized power pattern model (Beam model)
         power_norm = power_pattern / power_pattern.max()
+        
+
+        
 
         if interp:
 
             # Generated beam u and v: wave-vectors -> degrees -> radians
             u_rad = wavevector2radians(u, wavel)
             v_rad = wavevector2radians(v, wavel)
+            
+            #print(u_rad.shape, v_rad.shape, power_norm.shape)
+            #print(u_rad)
+            #print(u_data[i])
+            #print(v_rad)
+            #print(v_data[i])
 
             # The calculated beam needs to be transformed!
             intrp = interpolate.RegularGridInterpolator(
@@ -125,6 +136,7 @@ def residual_true(
                 values=power_norm.T,    # data in grid
                 method='linear'         # linear or nearest
                 )
+                
 
             # input interpolation function is the real beam grid
             beam_model.append(intrp(np.array([u_data[i], v_data[i]]).T))
@@ -145,7 +157,8 @@ def residual_true(
 
 def residual(
     params, idx, N_K_coeff, beam_data_norm, u_data, v_data, d_z, wavel,
-    illum_func, telgeo, resolution, box_factor, interp, config_params
+    illum_func, telgeo, resolution, box_factor, interp, config_params,
+    delta_opd
         ):
     """
     Wrapper for the `~pyoof.residual_true` function. The objective of
@@ -218,6 +231,7 @@ def residual(
         squares minimization), by default four parameters are kept fixed,
         ``i_amp``, ``x0``, ``y0`` and ``K(0, 0)``. See the
         ``config_params.yml`` file.
+    delta_opd : ``
 
     Returns
     -------
@@ -252,6 +266,7 @@ def residual(
         illum_func=illum_func,
         telgeo=telgeo,
         interp=interp,
+        delta_opd=delta_opd
         )
 
     return _residual_true
@@ -467,6 +482,13 @@ def fit_beam(
     print('Obs Wavelength : ', np.round(wavel, 4), 'm')
     print('d_z (out-of-focus): ', np.round(d_z, 4), 'm')
     print('Illumination to be fitted: ', illum_name)
+    
+    if tel_name == 'SRT':
+    
+        delta_opd = precompute_srt_delta_opd(data_info, telgeo, resolution, box_factor)
+        
+    else:
+        delta_opd = [0.0, 0.0, 0.0]
 
     for order in range(1, order_max + 1):
 
@@ -558,7 +580,8 @@ def fit_beam(
                 resolution,      # FFT2 resolution for a rectangular grid
                 box_factor,      # Image pixel size level
                 True,            # Grid interpolation
-                config_params    # Coeff configuration for minimization (dict)
+                config_params,   # Coeff configuration for minimization (dict)
+                delta_opd        # Delta OPD
                 ),
             bounds=bounds,
             method=method,
@@ -589,11 +612,21 @@ def fit_beam(
             )
 
         # Final phase from fit in the telescope's primary reflector
-        _phase = phase(
+        _x, _y, _phase = phase(
             K_coeff=params_solution[4:],
             notilt=True,
             pr=telgeo[2]
-            )[2]
+            )
+            
+
+        if tel_name == 'SRT':
+            F = 149.76
+        elif tel_name == 'effelsberg':
+            F = 387.39435
+        x_grid, y_grid = np.meshgrid(_x, _y)
+        # Transform phase error to deformation error
+        deformation_error = compute_deformation(phase=_phase, wavelength=wavel,
+                            x=x_grid, y=y_grid, F=F)
 
         # Storing files in directory
         if not verbose == 0:
@@ -639,7 +672,7 @@ def fit_beam(
         # To store large files in csv format
         save_to_csv = [
             beam_data, u_data, v_data, res_optim, jac_optim, grad_optim,
-            _phase, cov_ptrue, corr_ptrue
+            _phase, deformation_error, cov_ptrue, corr_ptrue
             ]
 
         store_data_csv(
@@ -662,7 +695,9 @@ def fit_beam(
                 save=True,
                 angle='degrees',
                 resolution=resolution,
-                box_factor=box_factor
+                box_factor=box_factor,
+                wavelength=wavel,
+                telescope_name=tel_name
                 )
 
             plt.close('all')
