@@ -397,8 +397,7 @@ def plot_error_map(wavelength, K_coeff, notilt, pr, title, telescope_name):
     # Transform phase error to deformation error
     error = compute_deformation(phase=_phase, wavelength=wavelength,
             x=x_grid, y=y_grid, F=F)
-    print(_phase)
-    print(error)
+
 
     fig, ax = plt.subplots(figsize=(6, 5.8))
 

@@ -120,7 +120,7 @@ def extract_data_pyoof(pathfits):
     
 # ---------------------------------------------------------------------------- #
     
-def extract_data_srt():
+def extract_data_srt(srt_data_dir, dz, frequency):
     """
     Read data from files in "srt_data_dir" and generate the FITS file according
     to the format requested by pyoof
@@ -130,10 +130,8 @@ def extract_data_srt():
     
     """
 
-    srt_data_dir = '/home/pinno/oac/pyoof/pyoof/data/srt_data'
     file_names = ['ffmap_-out.grd', 'ffmap_in.grd', 'ffmap_+out.grd']
-    d_z = [-0.01153, 0.0, 0.01153]
-    frequency = 26.0E+9
+    d_z = [-dz, 0.0, dz]
 
     wavelength = light_speed / frequency  # Hz frequency
     
