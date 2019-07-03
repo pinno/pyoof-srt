@@ -1,9 +1,13 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+# Authors: Tomas Cassanelli and Andrea Pinna
 
 import sys
 import pyoof
 from pyoof import aperture, telgeometry
 
+# ---------------------------------------------------------------------------- #
 
 def main():
 
@@ -45,7 +49,10 @@ def main():
                    config=config,
                    logger=logger)
 
+# ---------------------------------------------------------------------------- #
 
 if __name__ == '__main__':
 
     main()
+
+# ---------------------------------------------------------------------------- #

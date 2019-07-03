@@ -1,16 +1,20 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Author: Tomas Cassanelli
+# Authors: Tomas Cassanelli and Andrea Pinna
+
 import numpy as np
 from ..math_functions import line_equation
 
+# ---------------------------------------------------------------------------- #
+
 __all__ = [
     'opd_effelsberg', 'opd_srt', 'opd_manual',
-    'block_manual', 'block_effelsberg', 
+    'block_manual', 'block_effelsberg',
     'block_srt', 'block_srt_wo_legs', 'block_srt_wo_legs_and_sr'
     ]
 
+# ---------------------------------------------------------------------------- #
 
 def opd_effelsberg(x, y, d_z, delta_opd=0.0):
     """
@@ -65,8 +69,9 @@ def opd_effelsberg(x, y, d_z, delta_opd=0.0):
           delta_opd
 
     return opd
-    
-    
+
+# ---------------------------------------------------------------------------- #
+
 def opd_srt(x, y, d_z, delta_opd):
     """
     Optical path difference (OPD) function, :math:`\\delta(x,y;d_z)`. Given by
@@ -116,12 +121,12 @@ def opd_srt(x, y, d_z, delta_opd):
     r = np.sqrt(x ** 2 + y ** 2)  # polar coordinates radius
     a = r / (2 * Fp)
     b = r / (2 * F)
-    
 
     opd = d_z * ((1 - a ** 2) / (1 + a ** 2) + (1 - b ** 2) / (1 + b ** 2)) + delta_opd
 
     return opd
 
+# ---------------------------------------------------------------------------- #
 
 def opd_manual(Fp, F):
     """
@@ -160,6 +165,7 @@ def opd_manual(Fp, F):
 
     return opd_func
 
+# ---------------------------------------------------------------------------- #
 
 def block_effelsberg(x, y):
     """
@@ -233,12 +239,12 @@ def block_effelsberg(x, y):
 
     return block
 
+# ---------------------------------------------------------------------------- #
 
 def block_srt(x, y):
     """
     Truncation in the aperture (amplitude) distribution, :math:`B(x, y)`,
-    given by the telescope's structure; i.e. support legs, sub-reflector and
-    shade effect as seen from the secondary focus of the Sardinia Radio Telescope.
+    given by the Sardinia Radio Telescope support legs and secondary reflector.
 
     Parameters
     ----------
@@ -278,12 +284,12 @@ def block_srt(x, y):
 
     return block
 
+# ---------------------------------------------------------------------------- #
 
 def block_srt_wo_legs(x, y):
     """
     Truncation in the aperture (amplitude) distribution, :math:`B(x, y)`,
-    given by the telescope's structure; i.e. support legs, sub-reflector and
-    shade effect as seen from the secondary focus of the Sardinia Radio Telescope.
+    given by the Sardinia Radio Telescope secondary reflector.
 
     Parameters
     ----------
@@ -309,12 +315,13 @@ def block_srt_wo_legs(x, y):
 
     return block
 
+# ---------------------------------------------------------------------------- #
 
 def block_srt_wo_legs_and_sr(x, y):
     """
-    Truncation in the aperture (amplitude) distribution, :math:`B(x, y)`,
-    given by the telescope's structure; i.e. support legs, sub-reflector and
-    shade effect as seen from the secondary focus of the Sardinia Radio Telescope.
+    Truncation in the aperture (amplitude) distribution, :math:`B(x, y)` without
+    taking into account the Sardinia Radio Telescope support legs and secondary
+    reflector.
 
     Parameters
     ----------
@@ -338,6 +345,7 @@ def block_srt_wo_legs_and_sr(x, y):
 
     return block
 
+# ---------------------------------------------------------------------------- #
 
 def block_manual(pr, sr, a, L):
     """
@@ -375,3 +383,5 @@ def block_manual(pr, sr, a, L):
         return block
 
     return block_func
+
+# ---------------------------------------------------------------------------- #

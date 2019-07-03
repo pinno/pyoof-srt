@@ -1,33 +1,37 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Author: Tomas Cassanelli
+# Authors: Tomas Cassanelli and Andrea Pinna
+
+import os
+import warnings
+import yaml
 import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from scipy import interpolate
 from astropy.io import ascii
 from astropy.utils.data import get_pkg_data_filename
-import warnings
-import os
-import yaml
 from .aperture import radiation_pattern, phase, compute_deformation
 from .math_functions import wavevector2degrees, wavevector2radians
 from .aux_functions import uv_ratio
+
+# ---------------------------------------------------------------------------- #
 
 __all__ = [
     'plot_beam', 'plot_data', 'plot_phase', 'plot_error_map',
     'plot_variance', 'plot_fit_path'
     ]
 
+# ---------------------------------------------------------------------------- #
+
 # Plot style added from relative path
 plt.style.use(get_pkg_data_filename('data/pyoof.mplstyle'))
 
+# ---------------------------------------------------------------------------- #
 
-def plot_beam(
-    params, d_z, wavel, illum_func, telgeo, resolution, box_factor, plim_rad,
-    angle, title, opd
-        ):
+def plot_beam(params, d_z, wavel, illum_func, telgeo, resolution, box_factor,
+              plim_rad, angle, title, opd):
     """
     Beam maps, :math:`P_\\mathrm{norm}(u, v)`, figure given fixed
     ``I_coeff`` coefficients and ``K_coeff`` set of coefficients. It is the
@@ -95,7 +99,6 @@ def plot_beam(
         _u, _v, _F = radiation_pattern(
             K_coeff=K_coeff,
             I_coeff=I_coeff,
-            d_z=d_z[i],
             wavel=wavel,
             illum_func=illum_func,
             telgeo=telgeo,
@@ -182,6 +185,7 @@ def plot_beam(
 
     return fig
 
+# ---------------------------------------------------------------------------- #
 
 def plot_data(u_data, v_data, beam_data, d_z, angle, title, res_mode):
     """
@@ -284,6 +288,7 @@ def plot_data(u_data, v_data, beam_data, d_z, angle, title, res_mode):
 
     return fig
 
+# ---------------------------------------------------------------------------- #
 
 def plot_phase(K_coeff, notilt, pr, title):
     """
@@ -349,6 +354,7 @@ def plot_phase(K_coeff, notilt, pr, title):
 
     return fig
 
+# ---------------------------------------------------------------------------- #
 
 def plot_error_map(wavelength, K_coeff, notilt, pr, title, telescope_name,
                    config):
@@ -379,7 +385,7 @@ def plot_error_map(wavelength, K_coeff, notilt, pr, title, telescope_name,
         Aperture phase distribution parametrized in terms of the Zernike
         circle polynomials, and represented for the telescope's primary dish.
     """
-    
+
     F = config['params']['total_focus']
 
     if notilt:
@@ -396,8 +402,7 @@ def plot_error_map(wavelength, K_coeff, notilt, pr, title, telescope_name,
     x_grid, y_grid = np.meshgrid(_x, _y)
     # Transform phase error to deformation error (in mm)
     error = compute_deformation(phase=_phase, wavelength=wavelength,
-            x=x_grid, y=y_grid, F=F)
-
+                                x=x_grid, y=y_grid, F=F)
 
     fig, ax = plt.subplots(figsize=(6, 5.8))
 
@@ -422,6 +427,7 @@ def plot_error_map(wavelength, K_coeff, notilt, pr, title, telescope_name,
 
     return fig
 
+# ---------------------------------------------------------------------------- #
 
 def plot_variance(matrix, order, diag, illumination, cbtitle, title):
     """
@@ -529,10 +535,10 @@ def plot_variance(matrix, order, diag, illumination, cbtitle, title):
 
     return fig
 
+# ---------------------------------------------------------------------------- #
 
-def plot_fit_path(
-    path_pyoof, order, illum_func, telgeo, resolution, box_factor, angle,
-    plim_rad, save, wavelength, telescope_name, notilt, config, opd):
+def plot_fit_path(path_pyoof, order, illum_func, telgeo, resolution, box_factor,
+                  angle, plim_rad, save,telescope_name, notilt, config, opd):
     """
     Plot all important figures after a least squares minimization.
 
@@ -696,24 +702,22 @@ def plot_fit_path(
         diag=True,
         illumination=illumination
         )
-        
+
     fig_error = plot_error_map(wavelength=pyoof_info['wavel'],
-        K_coeff=K_coeff,
-        title=(
-            '{} deformation error $d_z=\\pm {}$ m ' +
-            '$n={}$ $\\alpha={}$ deg'
-            ).format(obs_object, round(pyoof_info['d_z'][2], 3), n, meanel),
-        notilt=notilt,
-        pr=telgeo[2],
-        telescope_name=telescope_name,
-        config=config
-        )
+                               K_coeff=K_coeff,
+                               title=('{} deformation error $d_z=\\pm {}$ m ' +
+                                      '$n={}$ $\\alpha={}$ deg').format(
+                                      obs_object,
+                                      round(pyoof_info['d_z'][2], 3),
+                                      n, meanel),
+                               notilt=notilt,
+                               pr=telgeo[2],
+                               telescope_name=telescope_name,
+                               config=config)
 
     if save:
         fig_beam.savefig(os.path.join(path_plot, 'fitbeam_n{}.pdf'.format(n)))
-        fig_phase.savefig(
-            os.path.join(path_plot, 'fitphase_n{}.pdf'.format(n))
-            )
+        fig_phase.savefig(os.path.join(path_plot, 'fitphase_n{}.pdf'.format(n)))
         fig_res.savefig(os.path.join(path_plot, 'residual_n{}.pdf'.format(n)))
         fig_cov.savefig(os.path.join(path_plot, 'cov_n{}.pdf'.format(n)))
         fig_corr.savefig(os.path.join(path_plot, 'corr_n{}.pdf'.format(n)))
@@ -721,3 +725,5 @@ def plot_fit_path(
 
         if n == 1:
             fig_data.savefig(os.path.join(path_plot, 'obsbeam.pdf'))
+
+# ---------------------------------------------------------------------------- #

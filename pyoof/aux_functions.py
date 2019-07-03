@@ -2,12 +2,13 @@
 # -*- coding: utf-8 -*-
 
 # Authors: Tomas Cassanelli and Andrea Pinna
+
 import logging
-import numpy as np
 import os
 import shutil
 import sys
 import yaml
+import numpy as np
 from astropy.io import ascii, fits
 from scipy.constants import c as light_speed
 from .aperture import illum_gauss, illum_pedestal
@@ -25,6 +26,9 @@ __all__ = [
 # ---------------------------------------------------------------------------- #
 
 def get_run_config(yaml_config_file):
+    """
+    Read configuration parameters for the current run.
+    """
 
     if not os.path.exists(yaml_config_file):
         sys.exit('Error! Configuration file "{}" does not exist!'.format(
@@ -36,10 +40,12 @@ def get_run_config(yaml_config_file):
         sys.exit('Cannot read configuration file "{}"!'.format(
             yaml_config_file))
 
-
 # ---------------------------------------------------------------------------- #
 
 def init_output_dir(config):
+    """
+    Create output directory.
+    """
 
     # Create output directory
     if not os.path.exists(config['output']['output_dir']):
@@ -50,13 +56,16 @@ def init_output_dir(config):
     else:
         try:
             os.mkdir(config['output']['output_dir'])
-        except FileExistsError as error:
+        except FileExistsError:
             sys.exit('Error! Directory "{}" already exists!'.format(
                 config['output']['output_dir']))
 
 # ---------------------------------------------------------------------------- #
 
 def init_logger(config):
+    """
+    Initialize loggers to standard output and to file.
+    """
 
     logger = logging.getLogger('pyoof')
     logger.setLevel(logging.DEBUG)
@@ -185,6 +194,10 @@ def extract_data_pyoof(pathfits):
 # ---------------------------------------------------------------------------- #
 
 def extract_data_srt(config, logger):
+    """
+    Read data from synthetic or real measurement files and generate the output
+    FITS file in the requested format by pyoof.
+    """
 
     data_files = [os.path.join(config['input']['input_dir'],
                                config['input']['oof_minus']),
@@ -200,9 +213,9 @@ def extract_data_srt(config, logger):
     wavelength = light_speed / float(config['params']['frequency'])  # Hz frequency
 
     if config['input']['real_data']:
-        u, v, P = extract_real_data_srt(data_files, d_z, wavelength, logger)
+        u, v, P = extract_real_data_srt(data_files, logger)
     else:
-        u, v, P = extract_synthetic_data_srt(data_files, d_z, wavelength, logger)
+        u, v, P = extract_synthetic_data_srt(data_files, logger)
 
     u_to_save = [u[i].flatten() for i in range(3)]
     v_to_save = [v[i].flatten() for i in range(3)]
@@ -258,14 +271,10 @@ def extract_data_srt(config, logger):
 
 # ---------------------------------------------------------------------------- #
 
-def extract_real_data_srt(data_files, d_z, wavelength, logger):
+def extract_real_data_srt(data_files, logger):
     """
-    Read data from files in "srt_data_dir" and generate the FITS file according
-    to the format requested by pyoof
-
-    Parameters
-    ----------
-
+    Read data from input files containing real measurements and generate
+    organized output variables.
     """
 
     # Load SRT data
@@ -290,14 +299,10 @@ def extract_real_data_srt(data_files, d_z, wavelength, logger):
 
 # ---------------------------------------------------------------------------- #
 
-def extract_synthetic_data_srt(data_files, d_z, wavelength, logger):
+def extract_synthetic_data_srt(data_files, logger):
     """
     Read data from input files containing synthetic measurements and generate
-    the FITS file according to the format requested by pyoof.
-
-    Parameters
-    ----------
-
+    organized output variables.
     """
 
     u_all, v_all, P_all = [], [], []
@@ -330,6 +335,9 @@ def extract_synthetic_data_srt(data_files, d_z, wavelength, logger):
 # ---------------------------------------------------------------------------- #
 
 def precompute_srt_opd(data_info, telgeo, resolution, box_factor, config):
+    """
+    Precompute the optical path difference for the Sardinia Radio Telescope.
+    """
 
     pr = telgeo[2]
     box_size = pr * box_factor
@@ -344,8 +352,7 @@ def precompute_srt_opd(data_info, telgeo, resolution, box_factor, config):
     r = np.sqrt(np.power(x_grid, 2) + np.power(y_grid, 2))  # polar coordinates radius
     a = r / (2 * Fp)
     b = r / (2 * F)
-    
-    
+
     # Polynomial fitting
     R = np.asarray([
         [-1.438998E-09, -2.706440E-10, -7.098885E-14],
@@ -356,6 +363,7 @@ def precompute_srt_opd(data_info, telgeo, resolution, box_factor, config):
         [ 6.017033E-03,  2.461091E-03,  3.776198E-07],
         [-1.323805E-02, -9.312688E-03, -7.093549E-07],
         [ 5.676379E-03,  8.636208E-04,  2.160941E-07]])
+
     # Degree of polynomial
     N1 = 8
     N2 = 3
@@ -378,7 +386,7 @@ def precompute_srt_opd(data_info, telgeo, resolution, box_factor, config):
                 for k in range(N1-1, -1, -1):
                     delta_opd[i_dz][i, j] = delta_opd[i_dz][i, j] + \
                                             coeff[k] * np.power(r[i, j], N1-k)
-                                           
+
     if config['params']['residual_opd']:
         return opd + delta_opd
     else:
@@ -610,3 +618,5 @@ def uv_ratio(u, v):
     height = width * (ratio) + 0.2
 
     return width, height
+
+# ---------------------------------------------------------------------------- #

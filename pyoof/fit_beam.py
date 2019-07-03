@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Author: Tomas Cassanelli
+# Authors: Tomas Cassanelli and Andrea Pinna
+
 import numpy as np
 import matplotlib.pyplot as plt
 from astropy.io import ascii
@@ -15,15 +16,16 @@ from .math_functions import wavevector2radians, co_matrices
 from .plot_routines import plot_fit_path
 from .aux_functions import store_data_csv, illum_strings, store_data_ascii, precompute_srt_opd
 
+# ---------------------------------------------------------------------------- #
+
 __all__ = [
     'residual_true', 'residual', 'params_complete', 'fit_beam',
     ]
 
+# ---------------------------------------------------------------------------- #
 
-def residual_true(
-    params, beam_data_norm, u_data, v_data, d_z, wavel, illum_func, telgeo,
-    resolution, box_factor, interp, opd
-        ):
+def residual_true(params, beam_data_norm, u_data, v_data, wavel,
+                  illum_func, telgeo, resolution, box_factor, interp, opd):
     """
     Computes the true residual ready to use for the `~pyoof.fit_beam`
     function. True means that some of the parameters used will not be fitted.
@@ -100,7 +102,6 @@ def residual_true(
 
         u, v, F = radiation_pattern(
             K_coeff=K_coeff,
-            d_z=d_z[i],
             wavel=wavel,
             I_coeff=I_coeff,
             illum_func=illum_func,
@@ -120,14 +121,14 @@ def residual_true(
             # Generated beam u and v: wave-vectors -> degrees -> radians
             u_rad = wavevector2radians(u, wavel)
             v_rad = wavevector2radians(v, wavel)
-            
+
             # The calculated beam needs to be transformed!
             intrp = interpolate.RegularGridInterpolator(
                 points=(u_rad, v_rad),  # points defining grid
                 values=power_norm.T,    # data in grid
                 method='linear'         # linear or nearest
                 )
-                
+
 
             # input interpolation function is the real beam grid
             beam_model.append(intrp(np.array([u_data[i], v_data[i]]).T))
@@ -145,9 +146,11 @@ def residual_true(
 
     return _residual_true
 
+# ---------------------------------------------------------------------------- #
 
-def residual(params, idx, N_K_coeff, beam_data_norm, u_data, v_data, d_z, wavel,
-        illum_func, telgeo, resolution, box_factor, interp, config_params, opd):
+def residual(params, idx, N_K_coeff, beam_data_norm, u_data, v_data, wavel,
+             illum_func, telgeo, resolution, box_factor, interp, config_params,
+             opd):
     """
     Wrapper for the `~pyoof.residual_true` function. The objective of
     this function is to fool the `~scipy.optimize.least_squares` package by
@@ -247,7 +250,6 @@ def residual(params, idx, N_K_coeff, beam_data_norm, u_data, v_data, d_z, wavel,
         beam_data_norm=beam_data_norm,
         u_data=u_data,
         v_data=v_data,
-        d_z=d_z,
         wavel=wavel,
         resolution=resolution,
         box_factor=box_factor,
@@ -259,6 +261,7 @@ def residual(params, idx, N_K_coeff, beam_data_norm, u_data, v_data, d_z, wavel,
 
     return _residual_true
 
+# ---------------------------------------------------------------------------- #
 
 def params_complete(params, idx, N_K_coeff, config_params):
     """
@@ -324,6 +327,7 @@ def params_complete(params, idx, N_K_coeff, config_params):
 
     return params_updated
 
+# ---------------------------------------------------------------------------- #
 
 def fit_beam(data_info, data_obs, method, order_max, illum_func, telescope,
              resolution, box_factor, config, logger, fit_previous=True,
@@ -430,7 +434,7 @@ def fit_beam(data_info, data_obs, method, order_max, illum_func, telescope,
         if not callable(illum_func):
             raise ValueError('illum_func must be a function')
 
-        if not (callable(telescope[0]) and 
+        if not (callable(telescope[0]) and
                 callable(telescope[1]) and
                 isinstance(telescope[2], float) and
                 isinstance(telescope[3], str)):
@@ -452,13 +456,12 @@ def fit_beam(data_info, data_obs, method, order_max, illum_func, telescope,
     logger.debug('Wavelength: {} m'.format(np.round(wavel, 4)))
     logger.debug('d_z (out-of-focus): {} m'.format(np.round(d_z, 4)))
     logger.debug('Illumination to be fitted: {}'.format(illum_name))
-    
+
     logger.info('Precomputing optical path difference...')
-    opd = precompute_srt_opd(data_info, telgeo, resolution,
-                                   box_factor, config)
+    opd = precompute_srt_opd(data_info, telgeo, resolution, box_factor, config)
     logger.info('Done!')
     logger.info('-----------------------------------------------------')
-                                         
+
     # ------------------------------------------------------------------------ #
 
     for order in range(1, order_max + 1):
@@ -481,16 +484,15 @@ def fit_beam(data_info, data_obs, method, order_max, illum_func, telescope,
         if fit_previous and n != 1:
             N_K_coeff_previous = n * (n + 1) // 2
 
-            path_params_previous = os.path.join(
-                work_dir, 'fitpar_n{}.csv'.format(n - 1)
-                )
+            path_params_previous = os.path.join(work_dir,
+                                                'fitpar_n{}.csv'.format(n - 1))
 
             params_to_add = N_K_coeff - N_K_coeff_previous
 
             if os.path.exists(path_params_previous):
                 params_init = np.hstack(
                     (ascii.read(path_params_previous)['parfit'],
-                        np.ones(params_to_add) * 0.1)
+                     np.ones(params_to_add) * 0.1)
                     )
                 if not verbose == 0:
                     logger.info('Initial params: n={} fit'.format(n - 1))
@@ -530,10 +532,10 @@ def fit_beam(data_info, data_obs, method, order_max, illum_func, telescope,
             bounds = tuple([bounds_min_true, bounds_max_true])
 
         # -------------------------------------------------------------------- #
-        
+
         if not verbose == 0:
-            logger.info('Number of parameters to fit: {}'.format(
-                                                         len(params_init_true)))
+            n_pit = len(params_init_true)
+            logger.info('Number of parameters to fit: {}'.format(n_pit))
             logger.info('Starting optimization...')
             logger.info('-----------------------------------------------------')
 
@@ -547,7 +549,6 @@ def fit_beam(data_info, data_obs, method, order_max, illum_func, telescope,
                 beam_data_norm,  # Normalized beam maps
                 u_data,          # x coordinate beam map
                 v_data,          # y coordinate beam map
-                d_z,             # Radial offset
                 wavel,           # Wavelength of observation
                 illum_func,      # Illumination function
                 telgeo,          # telgeo = [block_dist, opd_func, pr]
@@ -562,11 +563,11 @@ def fit_beam(data_info, data_obs, method, order_max, illum_func, telescope,
             verbose=verbose,
             max_nfev=None
             )
-            
+
         if not verbose == 0:
             logger.info('-----------------------------------------------------')
             logger.info('Optimization done!')
-            
+
         # -------------------------------------------------------------------- #
 
         # Solutions from least squared optimization
@@ -590,9 +591,9 @@ def fit_beam(data_info, data_obs, method, order_max, illum_func, telescope,
         corr_ptrue = np.vstack(
             (np.delete(np.arange(N_K_coeff + 4), idx), corr)
             )
-            
+
         # -------------------------------------------------------------------- #
-        
+
         # Storing files in directory
         store_data_ascii(
             name=name,
@@ -602,23 +603,24 @@ def fit_beam(data_info, data_obs, method, order_max, illum_func, telescope,
             params_solution=params_solution,
             params_init=params_init,
             )
-            
+
         # Printing the results from saved ascii file
         if not verbose == 0:
             logger.info('-----------------------------------------------------')
-            saved_params = ascii.read(os.path.join(work_dir, 
-                                                'fitpar_n{}.csv'.format(n)))
+            saved_params = ascii.read(os.path.join(work_dir,
+                                                   'fitpar_n{}.csv'.format(n)))
             logger.info('{:<10}{:>20}{:>20}'.format('Parameter',
-                                  'Initial value', 'Fitted value'))
+                                                    'Initial value',
+                                                    'Fitted value'))
             for saved_param in saved_params:
                 logger.info('{:<10}{:>20.12f}{:>20.12f}'.format(
                     saved_param[saved_params.columns[0].name],
                     saved_param[saved_params.columns[2].name],
                     saved_param[saved_params.columns[1].name]))
             logger.info('-----------------------------------------------------')
-                                               
+
         # -------------------------------------------------------------------- #
-                
+
         # Writing pyoof relevant information to "pyoof_info.yml"
         if n == 1:
             pyoof_info = dict(telescope=tel_name,
@@ -650,7 +652,7 @@ def fit_beam(data_info, data_obs, method, order_max, illum_func, telescope,
         # Transform phase error to deformation error
         F = config['params']['total_focus']
         x_grid, y_grid = np.meshgrid(_x, _y)
-        deformation_error = compute_deformation(phase=_phase, 
+        deformation_error = compute_deformation(phase=_phase,
                                                 wavelength=wavel,
                                                 x=x_grid, y=y_grid, F=F)
 
@@ -666,7 +668,7 @@ def fit_beam(data_info, data_obs, method, order_max, illum_func, telescope,
 
         store_data_csv(name=name, name_dir=work_dir, order=n,
                        save_to_csv=save_to_csv)
-                       
+
         if not verbose == 0:
             logger.info('Done!')
 
@@ -680,7 +682,7 @@ def fit_beam(data_info, data_obs, method, order_max, illum_func, telescope,
             plot_fit_path(path_pyoof=work_dir, order=n, telgeo=telgeo,
                           illum_func=illum_func, plim_rad=plim_rad,
                           save=True, angle='degrees', resolution=resolution,
-                          box_factor=box_factor, wavelength=wavel,
+                          box_factor=box_factor,
                           telescope_name=tel_name, notilt=notilt,
                           config=config, opd=opd)
 
@@ -689,8 +691,10 @@ def fit_beam(data_info, data_obs, method, order_max, illum_func, telescope,
                 logger.info('Done!')
 
         # -------------------------------------------------------------------- #
-                
+
         logger.info('-----------------------------------------------------')
 
     final_time = np.round((time.time() - start_time) / 60, 2)
     logger.info('Power pattern fit completed after {} minutes!'.format(final_time))
+
+# ---------------------------------------------------------------------------- #

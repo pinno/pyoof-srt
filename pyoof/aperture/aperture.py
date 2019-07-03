@@ -1,16 +1,20 @@
 # !/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Author: Tomas Cassanelli
+# Authors: Tomas Cassanelli and Andrea Pinna
+
 import numpy as np
 from ..math_functions import cart2pol, rms
 from ..zernike import U
+
+# ---------------------------------------------------------------------------- #
 
 __all__ = [
     'illum_pedestal', 'illum_gauss', 'wavefront', 'phase', 'aperture',
     'radiation_pattern', 'e_rs', 'compute_deformation'
     ]
 
+# ---------------------------------------------------------------------------- #
 
 def e_rs(phase):
     """
@@ -53,6 +57,7 @@ def e_rs(phase):
 
     return np.exp(-rms_rad ** 2)
 
+# ---------------------------------------------------------------------------- #
 
 def illum_pedestal(x, y, I_coeff, pr, q=2):
     """
@@ -109,6 +114,7 @@ def illum_pedestal(x, y, I_coeff, pr, q=2):
 
     return Ea
 
+# ---------------------------------------------------------------------------- #
 
 def illum_gauss(x, y, I_coeff, pr):
     """
@@ -152,6 +158,7 @@ def illum_gauss(x, y, I_coeff, pr):
 
     return Ea
 
+# ---------------------------------------------------------------------------- #
 
 def wavefront(rho, theta, K_coeff):
     """
@@ -204,6 +211,7 @@ def wavefront(rho, theta, K_coeff):
 
     return W
 
+# ---------------------------------------------------------------------------- #
 
 def phase(K_coeff, notilt, pr, resolution=1e3):
     """
@@ -288,8 +296,9 @@ def phase(K_coeff, notilt, pr, resolution=1e3):
 
     return x, y, phi
 
+# ---------------------------------------------------------------------------- #
 
-def aperture(x, y, K_coeff, I_coeff, d_z, wavel, illum_func, telgeo, opd):
+def aperture(x, y, K_coeff, I_coeff, wavel, illum_func, telgeo, opd):
     """
     Aperture distribution, :math:`\\underline{E_\\mathrm{a}}(x, y)`.
     Collection of individual distribution/functions: i.e. illumination
@@ -365,8 +374,9 @@ def aperture(x, y, K_coeff, I_coeff, d_z, wavel, illum_func, telgeo, opd):
 
     # Wavefront (aberration) distribution
     W = wavefront(rho=r_norm, theta=t, K_coeff=K_coeff)
-    #delta = opd_func(x=x, y=y, d_z=d_z, delta_opd=delta_opd)  # Optical path difference function
-    Ea = illum_func(x=x, y=y, I_coeff=I_coeff, pr=pr)  # Illumination function
+
+    # Illumination function
+    Ea = illum_func(x=x, y=y, I_coeff=I_coeff, pr=pr)
 
     # Transformation: wavefront (aberration) distribution -> phase error
     phi = (W + opd / wavel) * 2 * np.pi  # phase error plus the OPD function
@@ -375,8 +385,9 @@ def aperture(x, y, K_coeff, I_coeff, d_z, wavel, illum_func, telgeo, opd):
 
     return E
 
+# ---------------------------------------------------------------------------- #
 
-def radiation_pattern(K_coeff, I_coeff, d_z, wavel, illum_func, telgeo,
+def radiation_pattern(K_coeff, I_coeff, wavel, illum_func, telgeo,
                       resolution, box_factor, opd):
     """
     Spectrum or (field) radiation pattern, :math:`F(u, v)`, it is the FFT2
@@ -467,7 +478,6 @@ def radiation_pattern(K_coeff, I_coeff, d_z, wavel, illum_func, telgeo,
         y=y_grid,
         K_coeff=K_coeff,
         I_coeff=I_coeff,
-        d_z=d_z,
         wavel=wavel,
         illum_func=illum_func,
         telgeo=telgeo,
@@ -482,10 +492,15 @@ def radiation_pattern(K_coeff, I_coeff, d_z, wavel, illum_func, telgeo,
     u_shift, v_shift = np.fft.fftshift(u), np.fft.fftshift(v)
 
     return u_shift, v_shift, F_shift
-    
-    
+
+# ---------------------------------------------------------------------------- #
+
 def compute_deformation(phase, wavelength, x, y, F):
+    """
+    Compute antenna deformation in millimeters.
+    """
 
     return 1e+3 * phase * wavelength * np.sqrt(1 + (np.power(x, 2) + \
                np.power(y, 2)) / (4 * np.power(F, 2))) / (4 * np.pi)
 
+# ---------------------------------------------------------------------------- #
