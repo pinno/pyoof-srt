@@ -289,9 +289,7 @@ def phase(K_coeff, notilt, pr, resolution=1e3):
     return x, y, phi
 
 
-def aperture(x, y, K_coeff, I_coeff, d_z, wavel, illum_func, telgeo,
-    delta_opd
-        ):
+def aperture(x, y, K_coeff, I_coeff, d_z, wavel, illum_func, telgeo, opd):
     """
     Aperture distribution, :math:`\\underline{E_\\mathrm{a}}(x, y)`.
     Collection of individual distribution/functions: i.e. illumination
@@ -333,7 +331,7 @@ def aperture(x, y, K_coeff, I_coeff, d_z, wavel, illum_func, telgeo,
         List that contains the blockage distribution, optical path difference
         (OPD) function, and the primary radius (`float`) in meters. The list
         must have the following order, ``telego = [block_dist, opd_func, pr]``.
-    delta_opd : ``
+    opd : ``
 
     Returns
     -------
@@ -367,21 +365,19 @@ def aperture(x, y, K_coeff, I_coeff, d_z, wavel, illum_func, telgeo,
 
     # Wavefront (aberration) distribution
     W = wavefront(rho=r_norm, theta=t, K_coeff=K_coeff)
-    delta = opd_func(x=x, y=y, d_z=d_z, delta_opd=delta_opd)  # Optical path difference function
+    #delta = opd_func(x=x, y=y, d_z=d_z, delta_opd=delta_opd)  # Optical path difference function
     Ea = illum_func(x=x, y=y, I_coeff=I_coeff, pr=pr)  # Illumination function
 
     # Transformation: wavefront (aberration) distribution -> phase error
-    phi = (W + delta / wavel) * 2 * np.pi  # phase error plus the OPD function
+    phi = (W + opd / wavel) * 2 * np.pi  # phase error plus the OPD function
 
     E = B * Ea * np.exp(phi * 1j)  # Aperture distribution
 
     return E
 
 
-def radiation_pattern(
-    K_coeff, I_coeff, d_z, wavel, illum_func, telgeo, resolution, box_factor,
-    delta_opd=0.0
-        ):
+def radiation_pattern(K_coeff, I_coeff, d_z, wavel, illum_func, telgeo,
+                      resolution, box_factor, opd):
     """
     Spectrum or (field) radiation pattern, :math:`F(u, v)`, it is the FFT2
     computation of the aperture distribution, :math:`\\underline{E_\\mathrm{a}}
@@ -426,7 +422,7 @@ def radiation_pattern(
         telescope, e.g. a ``box_factor = 5`` returns ``x = np.linspace(-5 *
         pr, 5 * pr, resolution)``, an array to be used in the FFT2
         (`~numpy.fft.fft2`).
-    delta_opd : ``
+    opd : ``
 
     Returns
     -------
@@ -475,7 +471,7 @@ def radiation_pattern(
         wavel=wavel,
         illum_func=illum_func,
         telgeo=telgeo,
-        delta_opd=delta_opd
+        opd=opd
         )
 
     F = np.fft.fft2(E)
@@ -490,6 +486,6 @@ def radiation_pattern(
     
 def compute_deformation(phase, wavelength, x, y, F):
 
-    return phase * wavelength * np.sqrt(1 + (np.power(x,2) + np.power(y,2)) / \
-           (4 * np.power(F,2))) / (4 * np.pi)
+    return 1e+3 * phase * wavelength * np.sqrt(1 + (np.power(x, 2) + \
+               np.power(y, 2)) / (4 * np.power(F, 2))) / (4 * np.pi)
 

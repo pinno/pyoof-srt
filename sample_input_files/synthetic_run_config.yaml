@@ -1,0 +1,31 @@
+params:
+    radiotelescope: !!str SRT
+    radius: !!float 32.004
+    focus_primary_reflector: !!float 21.0236
+    total_focus: !!float 149.76
+    frequency: !!float 26.0E+9
+    delta_z: !!float 0.01153
+    residual_opd: !!bool True
+fit:
+    optimization_variables: !!str /home/franco/oac/pyoof_data/srt_data/opt_vars.yaml
+    optimization_method: !!str trf
+    fit_previous: !!bool True
+    max_order: !!int 5
+    pixel_resolution: !!int 256
+    box_factor: !!int 5
+input:
+    real_data: !!bool False
+    input_dir: !!str /home/franco/oac/pyoof_data/srt_data
+    oof_minus: !!str ffmap_-out.grd
+    in_focus: !!str ffmap_in.grd
+    oof_plus: !!str ffmap_+out.grd
+output:
+    output_dir: !!str /home/franco/oac/pyoof_data/srt_output/run_synthetic_1
+    overwrite_dir: !!bool True
+    plot_figures: !!bool True
+info:
+    author: !!str Franco Buffa
+    label: !!str run_synthetic_1
+    observation_date: !!str 2019-03-15
+    comment: !!str test
+

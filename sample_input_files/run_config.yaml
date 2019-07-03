@@ -1,0 +1,31 @@
+params:
+    radiotelescope: !!str SRT
+    radius: !!float 32.004
+    focus_primary_reflector: !!float 21.0236
+    total_focus: !!float 149.76
+    frequency: !!float 22.23E+9
+    delta_z: !!float 0.027
+    residual_opd: !!bool True
+fit:
+    optimization_variables: !!str /home/franco/oac/pyoof_data/srt_data/opt_vars.yaml
+    optimization_method: !!str trf
+    fit_previous: !!bool True
+    max_order: !!int 5
+    pixel_resolution: !!int 256
+    box_factor: !!int 5
+input:
+    real_data: !!bool True
+    input_dir: !!str /home/franco/oac/pyoof_data/srt_data
+    oof_minus: !!str 20190426-110938-S0000-MAPPA_OUT1.txt
+    in_focus: !!str 20190426-101052-S0000-MAPPA_IN.txt
+    oof_plus: !!str 20190426-112403-S0000-MAPPA_OUT2.txt
+output:
+    output_dir: !!str /home/franco/oac/pyoof_data/srt_output/run_20190426
+    overwrite_dir: !!bool True
+    plot_figures: !!bool True
+info:
+    author: !!str Franco Buffa
+    label: !!str run_20190426
+    observation_date: !!str 2019-04-26
+    comment: !!str test
+

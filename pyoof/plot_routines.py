@@ -26,7 +26,7 @@ plt.style.use(get_pkg_data_filename('data/pyoof.mplstyle'))
 
 def plot_beam(
     params, d_z, wavel, illum_func, telgeo, resolution, box_factor, plim_rad,
-    angle, title
+    angle, title, opd
         ):
     """
     Beam maps, :math:`P_\\mathrm{norm}(u, v)`, figure given fixed
@@ -89,17 +89,19 @@ def plot_beam(
     K_coeff = params[4:]
 
     u, v, F = [], [], []
-    for _d_z in d_z:
+
+    for i in range(3):
 
         _u, _v, _F = radiation_pattern(
             K_coeff=K_coeff,
             I_coeff=I_coeff,
-            d_z=_d_z,
+            d_z=d_z[i],
             wavel=wavel,
             illum_func=illum_func,
             telgeo=telgeo,
             resolution=resolution,
-            box_factor=box_factor
+            box_factor=box_factor,
+            opd=opd[i]
             )
 
         u.append(_u)
@@ -348,7 +350,8 @@ def plot_phase(K_coeff, notilt, pr, title):
     return fig
 
 
-def plot_error_map(wavelength, K_coeff, notilt, pr, title, telescope_name):
+def plot_error_map(wavelength, K_coeff, notilt, pr, title, telescope_name,
+                   config):
     """
     Active surface deformations (error map), :math:`\\epsilon(x, y)`, figure,
     given the Zernike circle polynomial coefficients, ``K_coeff``, solution
@@ -377,24 +380,21 @@ def plot_error_map(wavelength, K_coeff, notilt, pr, title, telescope_name):
         circle polynomials, and represented for the telescope's primary dish.
     """
     
-    if telescope_name == 'SRT':
-        F = 149.76
-    elif telescope_name == 'effelsberg':
-        F = 387.39435
+    F = config['params']['total_focus']
 
     if notilt:
         cbartitle = (
-            '$\\varepsilon_{\\scriptsize{\\textrm{no-tilt}}}(x,y)$'
+            '$\\varepsilon_{\\scriptsize{\\textrm{no-tilt}}}(x,y)$ (mm)'
             )
     else:
-        cbartitle = '$\\varepsilon(x, y)$'
+        cbartitle = '$\\varepsilon(x, y)$ (mm)'
 
     extent = [-pr, pr, -pr, pr]
     levels = np.linspace(-2, 2, 9)
 
     _x, _y, _phase = phase(K_coeff=K_coeff, notilt=notilt, pr=pr)
     x_grid, y_grid = np.meshgrid(_x, _y)
-    # Transform phase error to deformation error
+    # Transform phase error to deformation error (in mm)
     error = compute_deformation(phase=_phase, wavelength=wavelength,
             x=x_grid, y=y_grid, F=F)
 
@@ -532,8 +532,7 @@ def plot_variance(matrix, order, diag, illumination, cbtitle, title):
 
 def plot_fit_path(
     path_pyoof, order, illum_func, telgeo, resolution, box_factor, angle,
-    plim_rad, save, wavelength, telescope_name
-        ):
+    plim_rad, save, wavelength, telescope_name, notilt, config, opd):
     """
     Plot all important figures after a least squares minimization.
 
@@ -656,7 +655,8 @@ def plot_fit_path(
         plim_rad=plim_rad,
         angle=angle,
         resolution=resolution,
-        box_factor=box_factor
+        box_factor=box_factor,
+        opd=opd
         )
 
     fig_phase = plot_phase(
@@ -665,7 +665,7 @@ def plot_fit_path(
             '{} phase error $d_z=\\pm {}$ m ' +
             '$n={}$ $\\alpha={}$ deg'
             ).format(obs_object, round(pyoof_info['d_z'][2], 3), n, meanel),
-        notilt=True,
+        notilt=notilt,
         pr=telgeo[2]
         )
 
@@ -703,9 +703,10 @@ def plot_fit_path(
             '{} deformation error $d_z=\\pm {}$ m ' +
             '$n={}$ $\\alpha={}$ deg'
             ).format(obs_object, round(pyoof_info['d_z'][2], 3), n, meanel),
-        notilt=True,
+        notilt=notilt,
         pr=telgeo[2],
-        telescope_name=telescope_name
+        telescope_name=telescope_name,
+        config=config
         )
 
     if save:
