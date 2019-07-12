@@ -37,7 +37,7 @@ def fit_beam_effelsberg(pathfits):
     fit_beam(
         data_info=data_info,
         data_obs=[beam_data, u_data, v_data],
-        order_max=15,                        # it'll fit from 1 to order_max
+        order_max=10,                        # it'll fit from 1 to order_max
         illum_func=aperture.illum_pedestal,  # or illum_gauss
         telescope=telescope['effelsberg'],
         fit_previous=True,                   # True is recommended
