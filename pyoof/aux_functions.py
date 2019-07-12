@@ -4,7 +4,6 @@
 # Author: Tomas Cassanelli
 import os
 import numpy as np
-from scipy.constants import golden
 from astropy.io import ascii, fits
 from astropy import units as apu
 from astropy.constants import c as light_speed
@@ -290,7 +289,11 @@ def store_data_ascii(
     L = np.array(ln)[:, 0]
     N = np.array(ln)[:, 1]
 
-    params_names = ['i_amp', taper_name, 'x_0', 'y_0']
+    illum_names = ['i_amp', taper_name, 'x_0', 'y_0']
+    bkg_names = ['beta']
+    params_names = illum_names + bkg_names
+
+    # adding the Zernike circle polynomials coefficients
     for i in range(N_K_coeff):
         params_names.append('K({}, {})'.format(N[i], L[i]))
 

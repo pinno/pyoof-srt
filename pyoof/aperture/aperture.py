@@ -300,7 +300,7 @@ def phase(K_coeff, notilt, pr, resolution=1e3):
     return x, y, phi
 
 
-def aperture(x, y, K_coeff, I_coeff, d_z, wavel, illum_func, telgeo):
+def aperture(x, y, K_coeff, Ea_coeff, d_z, wavel, illum_func, telgeo):
     """
     Aperture distribution, :math:`\\underline{E_\\mathrm{a}}(x, y)`.
     Collection of individual distribution/functions: i.e. illumination
@@ -364,11 +364,13 @@ def aperture(x, y, K_coeff, I_coeff, d_z, wavel, illum_func, telgeo):
     and illumination function.
 
     """
+    I_coeff = Ea_coeff[:4]
+    B_coeff = Ea_coeff[5]
 
     r, t = cart2pol(x, y)
 
     [block_dist, opd_func, pr] = telgeo
-    B = block_dist(x=x, y=y)
+    B = block_dist(x=x, y=y, B_coeff=B_coeff)
 
     # Normalization to be used in the Zernike circle polynomials
     r_norm = r / pr
@@ -389,7 +391,7 @@ def aperture(x, y, K_coeff, I_coeff, d_z, wavel, illum_func, telgeo):
 
 
 def radiation_pattern(
-    K_coeff, I_coeff, d_z, wavel, illum_func, telgeo, resolution, box_factor
+    K_coeff, Ea_coeff, d_z, wavel, illum_func, telgeo, resolution, box_factor
         ):
     """
     Spectrum or (field) radiation pattern, :math:`F(u, v)`, it is the FFT2
@@ -478,7 +480,7 @@ def radiation_pattern(
         x=x_grid,
         y=y_grid,
         K_coeff=K_coeff,
-        I_coeff=I_coeff,
+        Ea_coeff=Ea_coeff,
         d_z=d_z,
         wavel=wavel,
         illum_func=illum_func,

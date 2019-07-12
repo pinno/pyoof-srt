@@ -102,7 +102,7 @@ def opd_manual(Fp, F):
     return opd_func
 
 
-def block_effelsberg(x, y):
+def block_effelsberg(x, y, Ea_coeff):
     """
     Truncation in the aperture (amplitude) distribution, :math:`B(x, y)`,
     given by the telescope's structure; i.e. support legs, sub-reflector and
@@ -128,9 +128,6 @@ def block_effelsberg(x, y):
     L = 20 * apu.m     # Length support structure (from the edge of the sr)
     a = 1 * apu.m      # Half-width support structure
 
-    # Angle shade effect in aperture plane
-    alpha = 20 * apu.deg  # triangle angle
-
     block = np.zeros(x.shape)  # or y.shape same
     block[(x ** 2 + y ** 2 < pr ** 2) & (x ** 2 + y ** 2 > sr ** 2)] = 1
 
@@ -138,7 +135,12 @@ def block_effelsberg(x, y):
     block[(-(sr + L) < y) & (y < (sr + L)) & (-a < x) & (x < a)] = 0
     # block[(x ** 2 + y ** 2 < sr ** 2)] = 0.8
 
-    csc2 = np.sin(alpha) ** (-2)  # squared cosecant
+    # 20 * apu.deg
+    beta = Ea_coeff
+    if type(beta) != apu.quantity.Quantity:
+        beta = Ea_coeff * apu.deg
+
+    csc2 = np.sin(beta) ** (-2)  # squared cosecant
 
     # base of the triangle
     d = (-a + np.sqrt(a ** 2 - (a ** 2 - pr ** 2) * csc2)) / csc2
@@ -146,7 +148,7 @@ def block_effelsberg(x, y):
     # points for the triangle coordinates
     A = sr + L
     B = a
-    C = d / np.tan(alpha)
+    C = d / np.tan(beta)
     D = a + d
 
     y1 = line_equation((A, B), (C, D), x)

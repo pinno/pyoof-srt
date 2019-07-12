@@ -92,7 +92,7 @@ def residual_true(
         squares minimization `~scipy.optimize.least_squares` package.
     """
 
-    I_coeff, K_coeff = params[:4], params[4:]
+    Ea_coeff, K_coeff = params[:5], params[5:]
 
     # TODO: change this to a numpy array instead of list
     beam_model = []
@@ -102,7 +102,7 @@ def residual_true(
             K_coeff=K_coeff,
             d_z=d_z[i],
             wavel=wavel,
-            I_coeff=I_coeff,
+            Ea_coeff=Ea_coeff,
             illum_func=illum_func,
             telgeo=telgeo,
             resolution=resolution,
@@ -295,10 +295,10 @@ def params_complete(params, idx, N_K_coeff, config_params):
     """
 
     # Fixed values for parameters, in case they're excluded, see idx
-    [i_amp_f, taper_dB_f, x0_f, y0_f, K_f] = config_params['fixed']
+    [i_amp_f, taper_dB_f, x0_f, y0_f, beta, K_f] = config_params['fixed']
 
     # N_K_coeff number of Zernike circle polynomials coefficients
-    if params.size != (4 + N_K_coeff):
+    if params.size != (len(config_params['fixed']) + N_K_coeff):
         params_updated = params.copy()
         for i in idx:
             if i == 0:
@@ -312,6 +312,9 @@ def params_complete(params, idx, N_K_coeff, config_params):
                 # assigned value for x0
             elif i == 3:
                 params_updated = np.insert(params_updated, i, y0_f)
+                # assigned value for y0
+            elif i == 4:
+                params_updated = np.insert(params_updated, i, beta)
                 # assigned value for y0
             else:
                 params_updated = np.insert(params_updated, i, K_f)

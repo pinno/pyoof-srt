@@ -87,15 +87,15 @@ def plot_beam(
         :math:`0` and :math:`d_z^+`.
     """
 
-    I_coeff = params[:4]
-    K_coeff = params[4:]
+    Ea_coeff = params[:5]
+    K_coeff = params[5:]
 
     u, v, F = [], [], []
     for _d_z in d_z:
 
         _u, _v, _F = radiation_pattern(
             K_coeff=K_coeff,
-            I_coeff=I_coeff,
+            Ea_coeff=Ea_coeff,
             d_z=_d_z,
             wavel=wavel,
             illum_func=illum_func,
@@ -411,9 +411,10 @@ def plot_variance(matrix, order, diag, illumination, cbtitle, title):
     else:
         taper_name = '$\\mathrm{taper}_\\mathrm{dB}$'
 
-    params_names = [
-        '$A_{E_\mathrm{a}}$', taper_name, '$x_0$', '$y_0$'
-        ]
+    illum_names = ['$A_{E_\mathrm{a}}$', taper_name, '$x_0$', '$y_0$']
+    bkg_names = ['beta']
+    params_names = illum_names + bkg_names
+
     for i in range(N_K_coeff):
         params_names.append('$K_{' + str(N[i]) + '\,' + str(L[i]) + '}$')
     params_names = np.array(params_names)
