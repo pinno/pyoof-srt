@@ -364,8 +364,9 @@ def aperture(x, y, K_coeff, Ea_coeff, d_z, wavel, illum_func, telgeo):
     and illumination function.
 
     """
+
     I_coeff = Ea_coeff[:4]
-    B_coeff = Ea_coeff[5]
+    B_coeff = Ea_coeff[4]
 
     r, t = cart2pol(x, y)
 

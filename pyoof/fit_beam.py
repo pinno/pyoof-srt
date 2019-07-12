@@ -298,7 +298,7 @@ def params_complete(params, idx, N_K_coeff, config_params):
     [i_amp_f, taper_dB_f, x0_f, y0_f, beta, K_f] = config_params['fixed']
 
     # N_K_coeff number of Zernike circle polynomials coefficients
-    if params.size != (len(config_params['fixed']) + N_K_coeff):
+    if params.size != (5 + N_K_coeff):
         params_updated = params.copy()
         for i in idx:
             if i == 0:
@@ -538,12 +538,12 @@ def fit_beam(
             jac=res_lsq.jac,
             n_pars=params_init_true.size        # number of parameters fitted
             )
-        cov_ptrue = np.vstack((np.delete(np.arange(N_K_coeff + 4), idx), cov))
-        cor_ptrue = np.vstack((np.delete(np.arange(N_K_coeff + 4), idx), cor))
+        cov_ptrue = np.vstack((np.delete(np.arange(N_K_coeff + 5), idx), cov))
+        cor_ptrue = np.vstack((np.delete(np.arange(N_K_coeff + 5), idx), cor))
 
         # Final phase from fit in the telescope's primary reflector
         _phase = phase(
-            K_coeff=params_solution[4:],
+            K_coeff=params_solution[5:],
             notilt=True,
             pr=telgeo[2]
             )[2]

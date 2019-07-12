@@ -102,7 +102,7 @@ def opd_manual(Fp, F):
     return opd_func
 
 
-def block_effelsberg(x, y, Ea_coeff):
+def block_effelsberg(x, y, B_coeff):
     """
     Truncation in the aperture (amplitude) distribution, :math:`B(x, y)`,
     given by the telescope's structure; i.e. support legs, sub-reflector and
@@ -136,9 +136,9 @@ def block_effelsberg(x, y, Ea_coeff):
     # block[(x ** 2 + y ** 2 < sr ** 2)] = 0.8
 
     # 20 * apu.deg
-    beta = Ea_coeff
+    beta = B_coeff
     if type(beta) != apu.quantity.Quantity:
-        beta = Ea_coeff * apu.deg
+        beta = B_coeff * apu.deg
 
     csc2 = np.sin(beta) ** (-2)  # squared cosecant
 

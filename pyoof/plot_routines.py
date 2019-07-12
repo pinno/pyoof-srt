@@ -4,7 +4,6 @@
 # Author: Tomas Cassanelli
 import numpy as np
 import matplotlib.pyplot as plt
-from mpl_toolkits.axes_grid1 import ImageGrid
 from matplotlib.gridspec import GridSpec
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from scipy import interpolate
@@ -15,7 +14,6 @@ import warnings
 import os
 import yaml
 from .aperture import radiation_pattern, phase
-from .math_functions import wavevector2degrees, wavevector2radians
 from .aux_functions import uv_ratio
 
 __all__ = [
@@ -558,7 +556,7 @@ def plot_fit_path(
     # Reading least squares minimization output
     n = order
     fitpar = ascii.read(os.path.join(path_pyoof, 'fitpar_n{}.csv'.format(n)))
-    K_coeff = np.array(fitpar['parfit'])[4:]
+    K_coeff = np.array(fitpar['parfit'])[5:]
 
     with open(os.path.join(path_pyoof, 'pyoof_info.yml'), 'r') as inputfile:
         pyoof_info = yaml.safe_load(inputfile)
