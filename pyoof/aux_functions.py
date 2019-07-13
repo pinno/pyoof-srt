@@ -290,7 +290,7 @@ def store_data_ascii(
     N = np.array(ln)[:, 1]
 
     illum_names = ['i_amp', taper_name, 'x_0', 'y_0']
-    bkg_names = ['beta']
+    bkg_names = ['beta', 'tb']
     params_names = illum_names + bkg_names
 
     # adding the Zernike circle polynomials coefficients

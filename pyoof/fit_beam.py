@@ -92,7 +92,7 @@ def residual_true(
         squares minimization `~scipy.optimize.least_squares` package.
     """
 
-    Ea_coeff, K_coeff = params[:5], params[5:]
+    E_coeff, K_coeff = params[:6], params[6:]
 
     # TODO: change this to a numpy array instead of list
     beam_model = []
@@ -102,7 +102,7 @@ def residual_true(
             K_coeff=K_coeff,
             d_z=d_z[i],
             wavel=wavel,
-            Ea_coeff=Ea_coeff,
+            E_coeff=E_coeff,
             illum_func=illum_func,
             telgeo=telgeo,
             resolution=resolution,
@@ -295,10 +295,10 @@ def params_complete(params, idx, N_K_coeff, config_params):
     """
 
     # Fixed values for parameters, in case they're excluded, see idx
-    [i_amp_f, taper_dB_f, x0_f, y0_f, beta, K_f] = config_params['fixed']
+    [i_amp_f, taper_dB_f, x0_f, y0_f, beta, tb, K_f] = config_params['fixed']
 
     # N_K_coeff number of Zernike circle polynomials coefficients
-    if params.size != (5 + N_K_coeff):
+    if params.size != (6 + N_K_coeff):
         params_updated = params.copy()
         for i in idx:
             if i == 0:
@@ -315,7 +315,8 @@ def params_complete(params, idx, N_K_coeff, config_params):
                 # assigned value for y0
             elif i == 4:
                 params_updated = np.insert(params_updated, i, beta)
-                # assigned value for y0
+            elif i == 5:
+                params_updated = np.insert(params_updated, i, tb)
             else:
                 params_updated = np.insert(params_updated, i, K_f)
                 # assigned value for any other
@@ -538,12 +539,12 @@ def fit_beam(
             jac=res_lsq.jac,
             n_pars=params_init_true.size        # number of parameters fitted
             )
-        cov_ptrue = np.vstack((np.delete(np.arange(N_K_coeff + 5), idx), cov))
-        cor_ptrue = np.vstack((np.delete(np.arange(N_K_coeff + 5), idx), cor))
+        cov_ptrue = np.vstack((np.delete(np.arange(N_K_coeff + 6), idx), cov))
+        cor_ptrue = np.vstack((np.delete(np.arange(N_K_coeff + 6), idx), cor))
 
         # Final phase from fit in the telescope's primary reflector
         _phase = phase(
-            K_coeff=params_solution[5:],
+            K_coeff=params_solution[6:],
             notilt=True,
             pr=telgeo[2]
             )[2]

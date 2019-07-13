@@ -85,15 +85,15 @@ def plot_beam(
         :math:`0` and :math:`d_z^+`.
     """
 
-    Ea_coeff = params[:5]
-    K_coeff = params[5:]
+    E_coeff = params[:6]
+    K_coeff = params[6:]
 
     u, v, F = [], [], []
     for _d_z in d_z:
 
         _u, _v, _F = radiation_pattern(
             K_coeff=K_coeff,
-            Ea_coeff=Ea_coeff,
+            E_coeff=E_coeff,
             d_z=_d_z,
             wavel=wavel,
             illum_func=illum_func,
@@ -410,7 +410,7 @@ def plot_variance(matrix, order, diag, illumination, cbtitle, title):
         taper_name = '$\\mathrm{taper}_\\mathrm{dB}$'
 
     illum_names = ['$A_{E_\mathrm{a}}$', taper_name, '$x_0$', '$y_0$']
-    bkg_names = ['beta']
+    bkg_names = ['beta', 'tb']
     params_names = illum_names + bkg_names
 
     for i in range(N_K_coeff):
@@ -556,7 +556,7 @@ def plot_fit_path(
     # Reading least squares minimization output
     n = order
     fitpar = ascii.read(os.path.join(path_pyoof, 'fitpar_n{}.csv'.format(n)))
-    K_coeff = np.array(fitpar['parfit'])[5:]
+    K_coeff = np.array(fitpar['parfit'])[6:]
 
     with open(os.path.join(path_pyoof, 'pyoof_info.yml'), 'r') as inputfile:
         pyoof_info = yaml.safe_load(inputfile)

@@ -5,6 +5,7 @@ bound_max:
 - 0.01  # x0 illumination offset
 - 0.01  # y0
 - 50  # beta
+- -1
 - 5  # K(0, 0)
 bound_min:
 - 0  # i_amp
@@ -12,6 +13,7 @@ bound_min:
 - -0.01  # x0
 - -0.01  # y0
 - 5 # beta
+- -50
 - -5  # K(0, 0)
 excluded:
 - 0  # i_amp
@@ -19,13 +21,15 @@ excluded:
 - 2  # x0
 - 3  # y0
 # - 4 # beta
-- 5  # K(0, 0)
+# - 5 # taper blockage
+- 6  # K(0, 0)
 fixed:
 - 1.0  # i_amp
 - -13  # c_dB
 - 0  # x0
 - 0  # y0
 - 20 # beta
+- -13
 - 0  # K(0, 0)
 init:
 - 0.1  # i_amp
@@ -33,4 +37,5 @@ init:
 - 0  # x0
 - 0  # y0
 - 20 # beta
+- -15
 - 0  # K(0, 0)
