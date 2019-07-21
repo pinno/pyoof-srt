@@ -391,7 +391,9 @@ def aperture(x, y, K_coeff, E_coeff, d_z, wavel, illum_func, telgeo):
     # phase error plus the OPD function
 
     with apu.set_enabled_equivalencies(apu.dimensionless_angles()):
-        E = (Ea + Eb) * np.exp(phi * 1j)  # Aperture distribution
+        # E = (Ea + Eb) * np.exp(phi * 1j)  # Aperture distribution
+        E = Ea * np.exp(phi * 1j)  # Aperture distribution
+
 
     return E
 
