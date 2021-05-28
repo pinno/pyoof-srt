@@ -619,7 +619,7 @@ def plot_fit_path(path_pyoof, order, illum_func, telgeo, resolution, box_factor,
     K_coeff = np.array(fitpar['parfit'])[4:]
 
     with open(os.path.join(path_pyoof, 'pyoof_info.yml'), 'r') as inputfile:
-        pyoof_info = yaml.load(inputfile)
+        pyoof_info = yaml.load(inputfile, Loader=yaml.SafeLoader)
 
     # Substitute "_" with "//_" in variable obs_object
     obs_object = pyoof_info['obs_object'].replace('_', '\\_')

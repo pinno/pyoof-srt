@@ -425,10 +425,10 @@ def fit_beam(data_info, data_obs, method, order_max, illum_func, telescope,
                 )
 
             with open(config_params_pyoof, 'r') as yaml_config:
-                config_params = yaml.load(yaml_config)
+                config_params = yaml.load(yaml_config, Loader=yaml.SafeLoader)
         else:
             with open(config_params_file, 'r') as yaml_config:
-                config_params = yaml.load(yaml_config)
+                config_params = yaml.load(yaml_config, Loader=yaml.SafeLoader)
 
         # Generating specific exceptions
         if not callable(illum_func):
