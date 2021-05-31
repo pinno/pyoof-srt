@@ -334,7 +334,7 @@ def extract_synthetic_data_srt(data_files, logger):
 
 # ---------------------------------------------------------------------------- #
 
-def precompute_srt_opd(data_info, telgeo, resolution, box_factor, config):
+def precompute_srt_opd(data_info, telgeo, resolution, box_factor, config, logger):
     """
     Precompute the optical path difference for the Sardinia Radio Telescope.
     """
@@ -365,8 +365,8 @@ def precompute_srt_opd(data_info, telgeo, resolution, box_factor, config):
         [ 5.676379E-03,  8.636208E-04,  2.160941E-07]])
 
     # Degree of polynomial
-    N1 = 8
-    N2 = 3
+    N1 = R.shape[0]
+    N2 = R.shape[1]
 
     opd = [[], [], []]
     delta_opd = [[], [], []]
@@ -388,8 +388,10 @@ def precompute_srt_opd(data_info, telgeo, resolution, box_factor, config):
                                             coeff[k] * np.power(r[i, j], N1-k)
 
     if config['params']['residual_opd']:
-        return opd + delta_opd
+        logger.info('Returning "opd + delta_opd"...')
+        return [opd[0] + delta_opd[0], opd[1] + delta_opd[1], opd[2] + delta_opd[2]]
     else:
+        logger.info('Returning "opd" without "delta_opd"...')
         return opd
 
 # ---------------------------------------------------------------------------- #

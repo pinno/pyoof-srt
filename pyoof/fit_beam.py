@@ -458,7 +458,9 @@ def fit_beam(data_info, data_obs, method, order_max, illum_func, telescope,
     logger.debug('Illumination to be fitted: {}'.format(illum_name))
 
     logger.info('Precomputing optical path difference...')
-    opd = precompute_srt_opd(data_info, telgeo, resolution, box_factor, config)
+    opd = precompute_srt_opd(data_info, telgeo, resolution,
+                             box_factor, config, logger)
+    assert(len(opd) == 3)
     logger.info('Done!')
     logger.info('-----------------------------------------------------')
 

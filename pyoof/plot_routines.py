@@ -12,7 +12,7 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 from scipy import interpolate
 from astropy.io import ascii
 from astropy.utils.data import get_pkg_data_filename
-from .aperture import radiation_pattern, phase, compute_deformation
+from .aperture import radiation_pattern, phase, compute_deformation, aperture
 from .math_functions import wavevector2degrees, wavevector2radians
 from .aux_functions import uv_ratio
 
@@ -356,6 +356,73 @@ def plot_phase(K_coeff, notilt, pr, title):
 
 # ---------------------------------------------------------------------------- #
 
+def plot_aperture(telgeo, box_factor, resolution, K_coeff, I_coeff, d_z,
+                  wavel, illum_func, opd, title, notilt):
+
+
+    pr = telgeo[2]
+    extent = [-pr, pr, -pr, pr]
+
+    x = np.linspace(-pr, pr, resolution)
+    y = x
+    x_grid, y_grid = np.meshgrid(x, y)
+
+    # Compute aperture
+    E = aperture(
+            x=x_grid,
+            y=y_grid,
+            K_coeff=K_coeff,
+            I_coeff=I_coeff,
+            wavel=wavel,
+            illum_func=illum_func,
+            telgeo=telgeo,
+            opd=opd[1]
+            )
+
+    # Compute amplitude of complex values
+    E_am = np.abs(E)
+    # Normalize with respect to the maximum value
+    E_amn = E_am / E_am.max()
+    # Set zeros to NaN
+    E_amn[E_amn==0.0] = np.NaN
+    # Compute logarithm
+    E_log = 10 * np.log10(E_amn)
+
+    # Get minimum value of E amongst all Es
+    E_min = np.min(E_log[np.isfinite(E_log)])
+
+    levels = np.linspace(E_min, 0, 9)
+
+    if notilt:
+        cbartitle = '$10 \cdot \log _{10} E_{\\textrm{\\scriptsize{no-tilt}}}(x,y)$'
+    else:
+        cbartitle = '$10 \cdot \log _{10} E_{\\textrm{\\scriptsize{norm}}}(x,y)$'
+
+    fig, ax = plt.subplots(figsize=(6, 5.8))
+
+    im = ax.imshow(X=E_log, extent=extent)
+
+    # Partial solution for contour Warning
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        ax.contour(x, y, E_log, levels=levels, colors='k', alpha=0.3)
+
+    divider = make_axes_locatable(ax)
+    cax = divider.append_axes("right", size="3%", pad=0.03)
+    cb = fig.colorbar(im, cax=cax)
+    cb.ax.set_ylabel(cbartitle)
+
+    ax.set_title(title)
+    ax.set_ylabel('$y$ m')
+    ax.set_xlabel('$x$ m')
+    ax.grid(False)
+
+    fig.tight_layout()
+
+    return fig
+
+# ---------------------------------------------------------------------------- #
+
 def plot_error_map(wavelength, K_coeff, notilt, pr, title, telescope_name,
                    config):
     """
@@ -617,6 +684,7 @@ def plot_fit_path(path_pyoof, order, illum_func, telgeo, resolution, box_factor,
     n = order
     fitpar = ascii.read(os.path.join(path_pyoof, 'fitpar_n{}.csv'.format(n)))
     K_coeff = np.array(fitpar['parfit'])[4:]
+    I_coeff = np.array(fitpar['parfit'])[:4]
 
     with open(os.path.join(path_pyoof, 'pyoof_info.yml'), 'r') as inputfile:
         pyoof_info = yaml.load(inputfile, Loader=yaml.SafeLoader)
@@ -675,6 +743,22 @@ def plot_fit_path(path_pyoof, order, illum_func, telgeo, resolution, box_factor,
         pr=telgeo[2]
         )
 
+    fig_aperture = plot_aperture(
+        telgeo=telgeo,
+        box_factor=box_factor,
+        resolution=resolution,
+        K_coeff=K_coeff,
+        I_coeff=I_coeff,
+        d_z=pyoof_info['d_z'],
+        wavel=pyoof_info['wavel'],
+        illum_func=illum_func,
+        opd=opd,
+        title=(
+            '{} aperture error $d_z=\\pm {}$ m ' +
+            '$n={}$ $\\alpha={}$ deg'
+            ).format(obs_object, round(pyoof_info['d_z'][2], 3), n, meanel),
+        notilt=notilt)
+
     fig_res = plot_data(
         u_data=u_data,
         v_data=v_data,
@@ -718,6 +802,7 @@ def plot_fit_path(path_pyoof, order, illum_func, telgeo, resolution, box_factor,
     if save:
         fig_beam.savefig(os.path.join(path_plot, 'fitbeam_n{}.pdf'.format(n)))
         fig_phase.savefig(os.path.join(path_plot, 'fitphase_n{}.pdf'.format(n)))
+        fig_aperture.savefig(os.path.join(path_plot, 'fitaperture_n{}.pdf'.format(n)))
         fig_res.savefig(os.path.join(path_plot, 'residual_n{}.pdf'.format(n)))
         fig_cov.savefig(os.path.join(path_plot, 'cov_n{}.pdf'.format(n)))
         fig_corr.savefig(os.path.join(path_plot, 'corr_n{}.pdf'.format(n)))

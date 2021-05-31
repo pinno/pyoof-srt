@@ -4,6 +4,7 @@ dist
 pyoof.egg-info/
 .cache/
 version.py
+pyoof/cython_version.py
 
 # Documentation
 docs/_build
