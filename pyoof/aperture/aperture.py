@@ -213,7 +213,7 @@ def wavefront(rho, theta, K_coeff):
 
 # ---------------------------------------------------------------------------- #
 
-def phase(K_coeff, notilt, pr, resolution=1e3):
+def phase(K_coeff, notilt, pr, resolution=1000):
     """
     Aperture phase distribution (or phase error), :math:`\\varphi(x, y)`, for
     an specific telescope primary reflector. In general the tilt (average
