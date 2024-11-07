@@ -1,32 +1,7 @@
 # Packages/installer info
 build
-dist
-pyoof.egg-info/
-.cache/
-version.py
-pyoof/cython_version.py
-
-# Documentation
-docs/_build
-docs/api
-docs/generated
-
-# Compiled files
-__pycache__
-.eggs
-
-# Mac OSX
-.DS_Store
-
-# Notebooks
-.ipynb_checkpoints
-notebooks/fft_resolution_test.ipynb
-notebooks/pyoof_out
-data_generated/
-
-# Coverage
-htmlcov/
-.coverage
-
-# testing with miniconda
-mpy3_test.sh
+pyoof_srt.egg-info/
+pyoof/__pycache__/
+pyoof/aperture/__pycache__/
+pyoof/telgeometry/__pycache__/
+pyoof/zernike/__pycache__/
