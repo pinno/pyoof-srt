@@ -686,7 +686,7 @@ def fit_beam(data_info, data_obs, method, order_max, illum_func, telescope,
                           save=True, angle='degrees', resolution=resolution,
                           box_factor=box_factor,
                           telescope_name=tel_name, notilt=notilt,
-                          config=config, opd=opd)
+                          config=config, opd=opd, name=name)
 
             plt.close('all')
             if not verbose == 0:

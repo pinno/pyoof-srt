@@ -19,8 +19,8 @@ from .aux_functions import uv_ratio
 # ---------------------------------------------------------------------------- #
 
 __all__ = [
-    'plot_beam', 'plot_data', 'plot_phase', 'plot_error_map',
-    'plot_variance', 'plot_fit_path'
+    'plot_beam', 'plot_db_beam', 'plot_data', 'plot_db_data', 'plot_phase',
+    'plot_error_map', 'plot_variance', 'plot_fit_path'
     ]
 
 # ---------------------------------------------------------------------------- #
@@ -187,6 +187,182 @@ def plot_beam(params, d_z, wavel, illum_func, telgeo, resolution, box_factor,
 
 # ---------------------------------------------------------------------------- #
 
+def plot_db_beam(params, d_z, wavel, illum_func, telgeo, resolution, box_factor,
+                 plim_rad, angle, title, opd, order, name, path_pyoof):
+    """
+    Beam maps, :math:`P_\\mathrm{norm}(u, v)`, figure given fixed
+    ``I_coeff`` coefficients and ``K_coeff`` set of coefficients. It is the
+    straight forward result from a least squares minimization
+    (`~pyoof.fit_beam`). There will be three maps, for three radial offsets,
+    :math:`d_z^-`, :math:`0` and :math:`d_z^+` (in meters).
+
+    Parameters
+    ----------
+    params : `~numpy.ndarray`
+        Two stacked arrays, the illumination and Zernike circle polynomials
+        coefficients. ``params = np.hstack([I_coeff, K_coeff])``.
+    d_z : `list`
+        Radial offset :math:`d_z`, added to the sub-reflector in meters. This
+        characteristic measurement adds the classical interference pattern to
+        the beam maps, normalized squared (field) radiation pattern, which is
+        an out-of-focus property. The radial offset list must be as follows,
+        ``d_z = [d_z-, 0., d_z+]`` all of them in meters.
+    wavel : `float`
+        Wavelength, :math:`\\lambda`, of the observation in meters.
+    illum_func : `function`
+        Illumination function, :math:`E_\\mathrm{a}(x, y)`, to be evaluated
+        with the key **I_coeff**. The illumination functions available are
+        `~pyoof.aperture.illum_pedestal` and `~pyoof.aperture.illum_gauss`.
+    telgeo : `list`
+        List that contains the blockage distribution, optical path difference
+        (OPD) function, and the primary radius (`float`) in meters. The list
+        must have the following order, ``telego = [block_dist, opd_func, pr]``.
+    resolution : `int`
+        Fast Fourier Transform resolution for a rectangular grid. The input
+        value has to be greater or equal to the telescope resolution and with
+        power of 2 for faster FFT processing. It is recommended a value higher
+        than ``resolution = 2 ** 8``.
+    box_factor : `int`
+        Related to the FFT resolution (**resolution** key), defines the image
+        pixel size level. It depends on the primary radius, ``pr``, of the
+        telescope, e.g. a ``box_factor = 5`` returns ``x = np.linspace(-5 *
+        pr, 5 * pr, resolution)``, an array to be used in the FFT2
+        (`~numpy.fft.fft2`).
+    plim_rad : `~numpy.ndarray`
+        Contains the maximum values for the :math:`u` and :math:`v`
+        wave-vectors, it can be in degrees or radians depending which one is
+        chosen in **angle** key. The `~numpy.ndarray` must be in the following
+        order, ``plim_rad = np.array([umin, umax, vmin, vmax])``.
+    angle : `str`
+        Angle unit, it can be ``'degrees'`` or ``'radians'``.
+    title : `str`
+        Figure title.
+
+    Returns
+    -------
+    fig : `~matplotlib.figure.Figure`
+        The three beam maps plotted from the input parameters. Each map with a
+        different offset :math:`d_z` value. From left to right, :math:`d_z^-`,
+        :math:`0` and :math:`d_z^+`.
+    """
+
+    I_coeff = params[:4]
+    K_coeff = params[4:]
+
+    u, v, F = [], [], []
+
+    for i in range(3):
+
+        _u, _v, _F = radiation_pattern(
+            K_coeff=K_coeff,
+            I_coeff=I_coeff,
+            wavel=wavel,
+            illum_func=illum_func,
+            telgeo=telgeo,
+            resolution=resolution,
+            box_factor=box_factor,
+            opd=opd[i]
+            )
+
+        u.append(_u)
+        v.append(_v)
+        F.append(_F)
+
+    u = np.array(u)
+    v = np.array(v)
+
+    power_pattern = np.abs(F)
+
+    # Write fit power pattern to CSV file
+    if order > 3:
+        csv_filename = os.path.join(path_pyoof, f'fit_power_pattern_n{order}.csv')
+        csv_header = f'Fit Power Pattern {name}'
+        np.savetxt(fname=csv_filename, X=power_pattern.reshape((3, -1)), header=csv_header)
+
+    # Limits, they need to be transformed to degrees
+    if plim_rad is None:
+        pr = telgeo[2]  # primary reflector radius
+        bw = 1.22 * wavel / (2 * pr)  # Beamwidth radians
+        size_in_bw = bw * 8
+
+        # Finding central point for shifted maps
+        uu, vv = np.meshgrid(_u, _v)
+        u_offset = uu[power_pattern[1] == power_pattern[1].max()][0]
+        v_offset = vv[power_pattern[1] == power_pattern[1].max()][0]
+
+        u_offset = wavevector2radians(u_offset, wavel)
+        v_offset = wavevector2radians(v_offset, wavel)
+
+        plim_rad = [
+            -size_in_bw + u_offset, size_in_bw + u_offset,
+            -size_in_bw + v_offset, size_in_bw + v_offset
+            ]
+
+    if angle == 'degrees':
+        plim_angle = np.degrees(plim_rad)
+        u_angle = wavevector2degrees(u, wavel)
+        v_angle = wavevector2degrees(v, wavel)
+    if angle == 'radians':
+        plim_angle = plim_rad
+        u_angle = wavevector2radians(u, wavel)
+        v_angle = wavevector2radians(v, wavel)
+
+    plim_u, plim_v = plim_angle[:2], plim_angle[2:]
+
+    subtitle = ['$d_z=' + str(round(d_z[i], 3)) + '$ m' for i in range(3)]
+
+    fig, ax = plt.subplots(ncols=3, figsize=uv_ratio(plim_u, plim_v))
+
+    extent = [u_angle[0].min(), u_angle[0].max(),
+              v_angle[0].min(), v_angle[0].max()]
+
+    # initialize boundaries of colorbars
+    vmin = 0.0
+    vmax = 0.0
+
+    # list of power data expressed in dB
+    power_db = []
+
+    for i in range(3):
+
+        power_pattern[i] = power_pattern[i] - power_pattern[i].min()
+
+        power_pattern[i] = power_pattern[i] + 1.0
+
+        # transform interpolated data to dB
+        power_ng_db = 10.0 * np.log10(power_pattern[i])
+
+        # update maximum value for the colorbar
+        vmax = max(vmax, power_ng_db.max())
+
+        power_db.append(power_ng_db)
+
+    for i in range(3):
+
+        im = ax[i].imshow(X=power_db[i], extent=extent, vmin=vmin, vmax=vmax, cmap='jet')
+
+        divider = make_axes_locatable(ax[i])
+        cax = divider.append_axes('right', size='3%', pad=0.03)
+        cb = fig.colorbar(im, cax=cax)
+        #cb.formatter.set_powerlimits((0, 0))
+        cb.ax.yaxis.set_offset_position('left')
+        cb.set_label('dB')
+        cb.update_ticks()
+
+        ax[i].set_title(subtitle[i])
+        ax[i].set_ylabel(f'$v$-coordinate [{angle[:3]}]')
+        ax[i].set_xlabel(f'$u$-coordinate [{angle[:3]}]')
+        ax[i].set_ylim(*plim_v)
+        ax[i].set_xlim(*plim_u)
+        ax[i].grid(False)
+
+    fig.suptitle(title)
+    fig.tight_layout()
+
+    return fig
+
+# ---------------------------------------------------------------------------- #
+
 def plot_data(u_data, v_data, beam_data, d_z, angle, title, res_mode):
     """
     Real data beam maps, :math:`P^\\mathrm{obs}(x, y)`, figures given
@@ -258,10 +434,10 @@ def plot_data(u_data, v_data, beam_data, d_z, angle, title, res_mode):
 
         beam_ng = interpolate.griddata(
             # coordinates of grid points to interpolate from.
-            points=(u_data[i], v_data[i]),
-            values=beam_data[i],
+            points = (u_data[i], v_data[i]),
+            values = beam_data[i],
             # coordinates of grid points to interpolate to.
-            xi=tuple(np.meshgrid(u_ng, v_ng)),
+            xi = tuple(np.meshgrid(u_ng, v_ng)),
             method='cubic'
             )
 
@@ -287,6 +463,158 @@ def plot_data(u_data, v_data, beam_data, d_z, angle, title, res_mode):
     fig.tight_layout()
 
     return fig
+
+# ---------------------------------------------------------------------------- #
+
+def plot_db_data(u_data, v_data, beam_data, d_z, angle, title):
+    """
+    Real data beam maps, :math:`P^\\mathrm{obs}(x, y)`, figures given
+    given 3 out-of-focus radial offsets, :math:`d_z`.
+
+    Parameters
+    ----------
+    u_data : `~numpy.ndarray`
+        :math:`x` axis value for the 3 beam maps in radians. The values have
+        to be flatten, in one dimension, and stacked in the same order as the
+        ``d_z = [d_z-, 0., d_z+]`` values from each beam map.
+    v_data : `~numpy.ndarray`
+        :math:`y` axis value for the 3 beam maps in radians. The values have
+        to be flatten, one dimensional, and stacked in the same order as the
+        ``d_z = [d_z-, 0., d_z+]`` values from each beam map.
+    beam_data : `~numpy.ndarray`
+        Amplitude value for the beam map in mJy. The values have to be
+        flatten, one dimensional, and stacked in the same order as the ``d_z =
+        [d_z-, 0., d_z+]`` values from each beam map. If ``res_mode = False``,
+        the beam map will be normalized.
+    d_z : `list`
+        Radial offset :math:`d_z`, added to the sub-reflector in meters. This
+        characteristic measurement adds the classical interference pattern to
+        the beam maps, normalized squared (field) radiation pattern, which is
+        an out-of-focus property. The radial offset list must be as follows,
+        ``d_z = [d_z-, 0., d_z+]`` all of them in meters.
+    wavel : `float`
+        Wavelength, :math:`\\lambda`, of the observation in meters.
+    angle : `str`
+        Angle unit, it can be ``'degrees'`` or ``'radians'``.
+    title : `str`
+        Figure title.
+    res_mode : `bool`
+        If `True` the beam map will not be normalized. This feature is used
+        to compare the residual outputs from the least squares minimization
+        (`~pyoof.fit_beam`).
+
+    Returns
+    -------
+    fig : `~matplotlib.figure.Figure`
+        Figure from the three observed beam maps. Each map with a different
+        offset :math:`d_z` value. From left to right, :math:`d_z^-`, :math:`0`
+        and :math:`d_z^+`.
+    """
+
+    # input u and v are in radians
+    uv_title = f'[{angle[:3]}]'
+
+    if angle == 'degrees':
+        u_data, v_data = np.degrees(u_data), np.degrees(v_data)
+
+    subtitle = ['$d_z={}$ m'.format(round(d_z[i], 3)) for i in range(3)]
+
+    fig, ax = plt.subplots(ncols=3, figsize=uv_ratio(u_data[0], v_data[0]))
+
+    # grid of points to interpolate to
+    u_ng = np.linspace(u_data[0].min(), u_data[0].max(), 300)
+    v_ng = np.linspace(v_data[0].min(), v_data[0].max(), 300)
+    extent = [u_ng.min(), u_ng.max(), v_ng.min(), v_ng.max()]
+
+    fig_ni, ax_ni = plt.subplots(ncols=3, figsize=uv_ratio(u_data[0], v_data[0]))
+
+    # initialize boundaries of colorbars
+    vmin = 0.0
+    vmax = 0.0
+    vmax_ni = 0.0
+
+    # list of beam data expressed in dB
+    beam_db = []
+
+    # list of non-interpolated beam data expressed in dB
+    beam_ni_db = []
+
+    for i in range(3):
+
+        # interpolate data
+        beam_ng = interpolate.griddata(
+            # coordinates of grid points to interpolate from.
+            points = (u_data[i], v_data[i]),
+            values = beam_data[i],
+            # coordinates of grid points to interpolate to.
+            xi = tuple(np.meshgrid(u_ng, v_ng)),
+            method='cubic'
+            )
+
+        # non-interpolated beam data
+        beam_ni = (beam_data[i] - beam_data[i].min() + 1.0).reshape((int(np.sqrt(beam_data[i].size)), int(np.sqrt(beam_data[i].size))))
+
+        # subtract minimum value so that the new minimum is 0.0
+        beam_ng = beam_ng - beam_ng.min()
+
+        # add 1.0 so that the new minimum is 1.0 and its log10 is 0.0
+        beam_ng = beam_ng + 1.0
+
+        # transform interpolated data to dB
+        beam_ng_db = 10.0 * np.log10(beam_ng)
+        beam_ni = 10.0 * np.log10(beam_ni)
+
+        # update maximum value for the colorbar
+        vmax = max(vmax, beam_ng_db.max())
+        vmax_ni = max(vmax_ni, beam_ni.max())
+
+        # append dB-transformed data
+        beam_db.append(beam_ng_db)
+        beam_ni_db.append(beam_ni)
+
+    for i in range(3):
+
+        im = ax[i].imshow(X=beam_db[i], extent=extent, vmin=vmin, vmax=vmax, cmap='jet')
+
+        divider = make_axes_locatable(ax[i])
+        cax = divider.append_axes('right', size='3%', pad=0.03)
+
+        cb = fig.colorbar(im, cax=cax)
+        #cb.formatter.set_powerlimits((0, 0))
+        cb.ax.yaxis.set_offset_position('left')
+        cb.set_label('dB')
+        cb.update_ticks()
+
+        ax[i].set_ylabel(f'$v$-coordinate {uv_title}')
+        ax[i].set_xlabel(f'$u$-coordinate {uv_title}')
+        ax[i].set_title(subtitle[i])
+        ax[i].grid(False)
+
+    fig.suptitle(title)
+    fig.tight_layout()
+
+    for i in range(3):
+
+        im_ni = ax_ni[i].imshow(X=beam_ni_db[i], extent=extent, vmin=vmin, vmax=vmax_ni, cmap='jet')
+
+        divider_ni = make_axes_locatable(ax_ni[i])
+        cax_ni = divider_ni.append_axes('right', size='3%', pad=0.03)
+
+        cb_ni = fig_ni.colorbar(im_ni, cax=cax_ni)
+        #cb.formatter.set_powerlimits((0, 0))
+        cb_ni.ax.yaxis.set_offset_position('left')
+        cb_ni.set_label('dB')
+        cb_ni.update_ticks()
+
+        ax_ni[i].set_ylabel(f'$v$-coordinate {uv_title}')
+        ax_ni[i].set_xlabel(f'$u$-coordinate {uv_title}')
+        ax_ni[i].set_title(subtitle[i])
+        ax_ni[i].grid(False)
+
+    fig_ni.suptitle(title)
+    fig_ni.tight_layout()
+
+    return fig, fig_ni
 
 # ---------------------------------------------------------------------------- #
 
@@ -605,7 +933,7 @@ def plot_variance(matrix, order, diag, illumination, cbtitle, title):
 # ---------------------------------------------------------------------------- #
 
 def plot_fit_path(path_pyoof, order, illum_func, telgeo, resolution, box_factor,
-                  angle, plim_rad, save,telescope_name, notilt, config, opd):
+                  angle, plim_rad, save,telescope_name, notilt, config, opd, name):
     """
     Plot all important figures after a least squares minimization.
 
@@ -712,16 +1040,21 @@ def plot_fit_path(path_pyoof, order, illum_func, telgeo, resolution, box_factor,
             v_data=v_data,
             beam_data=beam_data,
             d_z=pyoof_info['d_z'],
-            title='{} observed power pattern $\\alpha={}$ degrees'.format(
-                obs_object, meanel),
+            title='{} observed FF beam power'.format(obs_object),
             angle=angle,
             res_mode=False
             )
+        fig_db_data, fig_ni_db_data = plot_db_data(
+            u_data=u_data,
+            v_data=v_data,
+            beam_data=beam_data,
+            d_z=pyoof_info['d_z'],
+            title='{} observed FF beam power (dB)'.format(obs_object),
+            angle=angle)
 
     fig_beam = plot_beam(
         params=np.array(fitpar['parfit']),
-        title='{} fit power pattern  $n={}$ $\\alpha={}$ degrees'.format(
-            obs_object, n, meanel),
+        title='{} fit FF beam power $n={}$'.format(obs_object, n),
         d_z=pyoof_info['d_z'],
         wavel=pyoof_info['wavel'],
         illum_func=illum_func,
@@ -731,6 +1064,22 @@ def plot_fit_path(path_pyoof, order, illum_func, telgeo, resolution, box_factor,
         resolution=resolution,
         box_factor=box_factor,
         opd=opd
+        )
+    fig_db_beam = plot_db_beam(
+        params=np.array(fitpar['parfit']),
+        title='{} fit FF beam power (dB) $n={}$'.format(obs_object, n),
+        d_z=pyoof_info['d_z'],
+        wavel=pyoof_info['wavel'],
+        illum_func=illum_func,
+        telgeo=telgeo,
+        plim_rad=plim_rad,
+        angle=angle,
+        resolution=resolution,
+        box_factor=box_factor,
+        opd=opd,
+        order=order,
+        name=name,
+        path_pyoof=path_pyoof
         )
 
     fig_phase = plot_phase(
@@ -801,6 +1150,7 @@ def plot_fit_path(path_pyoof, order, illum_func, telgeo, resolution, box_factor,
 
     if save:
         fig_beam.savefig(os.path.join(path_plot, 'fitbeam_n{}.pdf'.format(n)))
+        fig_db_beam.savefig(os.path.join(path_plot, 'fitbeam_db_n{}.pdf'.format(n)))
         fig_phase.savefig(os.path.join(path_plot, 'fitphase_n{}.pdf'.format(n)))
         fig_aperture.savefig(os.path.join(path_plot, 'fitaperture_n{}.pdf'.format(n)))
         fig_res.savefig(os.path.join(path_plot, 'residual_n{}.pdf'.format(n)))
@@ -810,5 +1160,7 @@ def plot_fit_path(path_pyoof, order, illum_func, telgeo, resolution, box_factor,
 
         if n == 1:
             fig_data.savefig(os.path.join(path_plot, 'obsbeam.pdf'))
+            fig_db_data.savefig(os.path.join(path_plot, 'obsbeam_db.pdf'))
+            fig_ni_db_data.savefig(os.path.join(path_plot, 'obsbeam_ni_db.pdf'))
 
 # ---------------------------------------------------------------------------- #
